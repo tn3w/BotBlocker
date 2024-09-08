@@ -9,6 +9,7 @@ License:  Apache-2.0 license
 import os
 from typing import Final, Tuple
 
+
 CURRENT_DIRECTORY_PATH: Final[str] = os.path.dirname(os.path.abspath(__file__))\
     .replace("\\\\", "\\")\
     .replace("\\", "/")\
@@ -21,6 +22,7 @@ if not is_test_environment:
         import pkg_resources
     except ImportError:
         is_test_environment: bool = True
+
 
 def get_work_dir(test_environment: bool = False) -> Tuple[str, bool]:
     """

@@ -27,12 +27,12 @@ class BotBlocker:
         """
 
         app = self.app
-        app.before_request(self.block)
+        app.before_request(self.access_denied)
 
 
-    def block(self) -> Tuple[str, int]:
+    def access_denied(self) -> Tuple[str, int]:
         """
-        Blocks bots from accessing the website.
+        Render the access denied page.
 
         Returns:
             Tuple[str, int]: A tuple containing the rendered HTML template and
