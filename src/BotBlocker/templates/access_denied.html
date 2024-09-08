@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1.0">
+        <title>Access denied</title>
+        <style>
+            body {
+                height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: Arial, sans-serif;
+            }
+
+            main {
+                max-width: 800px;
+                padding: 0 20px;
+            }
+
+            h1 {
+                font-size: 3rem;
+            }
+
+            p {
+                color: grey;
+            }
+
+            .info {
+                margin-top: 50px;
+                background-color: #333;
+                padding: 10px;
+                border-radius: 5px;
+                color: white;
+            }
+
+            @media (max-width: 400px) {
+                main {
+                    padding: 0 10px;
+                }
+
+                h1 {
+                    font-size: 2rem;
+                }
+
+                h2 {
+                    font-size: 1.2rem;
+                }
+
+                .info {
+                    display: none;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <h1>Access denied</h1>
+            <h2>You do not have access to { DOMAIN }.</h2>
+            <p>The site owner may have imposed restrictions that limit your access, potentially for reasons like security, traffic management, or compliance with legal requirements, creating barriers to viewing the content.</p>
+
+            <p class="info">I got an error when visiting { DOMAIN }{ PATH }.<br><br>Error code: 403<br>Ray ID: { RAY_ID }<br>Country: { CLIENT_COUNTRY }<br>IP: { CLIENT_IP }<br>Timestamp: { TIMESTAMP }</p>
+        </main>
+    </body>
+</html>
