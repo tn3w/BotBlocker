@@ -16,9 +16,12 @@ from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 
 try:
-    from src.BotBlocker.utils import handle_exception
+    from src.BotBlocker.util.utils import handle_exception
 except ImportError:
-    from utils import handle_exception
+    try:
+        from util.utils import handle_exception
+    except ImportError:
+        from utils import handle_exception
 
 
 def can_read(file_path: str) -> bool:

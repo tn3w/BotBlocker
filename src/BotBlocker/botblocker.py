@@ -1,5 +1,5 @@
 from typing import Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 from flask import Flask, request
 
 try:
@@ -30,6 +30,25 @@ class BotBlocker:
         app.before_request(self.access_denied)
 
 
+    def get_default_replaces(self) -> dict:
+        """
+        Get the default replacements for the template.
+
+        Returns:
+            dict: A dictionary containing the default replacements.
+        """
+
+        return {
+            "domain": request.host,
+            "path": request.path,
+            "ray_id": "1111111",
+            "client_country": "US",
+            "client_ip": "127.0.0.1",
+            "client_user_agent": request.user_agent.string,
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S") + " UTC",
+        }
+
+
     def access_denied(self) -> Tuple[str, int]:
         """
         Render the access denied page.
@@ -39,13 +58,6 @@ class BotBlocker:
             the HTTP status code.
         """
 
-        replaces = {
-            "domain": request.host,
-            "path": request.path,
-            "ray_id": "1111111",
-            "client_country": "US",
-            "client_ip": "127.0.0.1",
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " UTC",
-        }
-
-        return self.template_cache.render("access_denied.html", **replaces), 403
+        return self.template_cache.render(
+            "access_denied.html", **self.get_default_replaces()
+        ), 403

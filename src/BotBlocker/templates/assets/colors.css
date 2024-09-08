@@ -1,0 +1,27 @@
+:root {
+    --background-color: #fff;
+    --text-color: #000;
+    --secondary-background-color: #d1d1d1;
+    --secondary-text-color: #555;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background-color: #181a1b;
+        --text-color: #fff;
+        --secondary-background-color: #262A2B;
+        --secondary-text-color: #999;
+    }
+}
+
+body {
+    height: 100vh;
+    margin: 0;
+    font-family: Segoe UI, Arial, sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

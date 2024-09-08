@@ -11,13 +11,13 @@ License:  Apache-2.0 license
 import os
 
 try:
-    from src.BotBlocker.file import read
-    from src.BotBlocker.htmlutil import minimize_html, minimize
     from src.BotBlocker.cons import TEMPLATES_DIRECTORY_PATH
+    from src.BotBlocker.util.fileutil import read
+    from src.BotBlocker.util.htmlutil import minimize_html, minimize
 except ImportError as exc:
-    from file import read
-    from htmlutil import minimize_html, minimize
     from cons import TEMPLATES_DIRECTORY_PATH
+    from util.fileutil import read
+    from util.htmlutil import minimize_html, minimize
 
 
 class TemplateCache:
@@ -75,6 +75,8 @@ class TemplateCache:
                 file_name, extension = os.path.splitext(asset_file_name)[:2]
                 self._assets[file_name] = minimize(asset_file_content, extension)
 
+        print(self._assets)
+
 
     def render(self, template_name: str, **kwargs) -> str:
         """
@@ -105,7 +107,7 @@ class TemplateCache:
         for key, value in sorted_kwargs.items():
             key = key.upper()
 
-            template = template.replace("{ " + key + " }", value)
+            template = template.replace("{" + key + "}", value)
 
         return template
 
