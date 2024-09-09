@@ -118,6 +118,7 @@ def is_get_or_post(request: Request) -> bool:
 
     return request.method.lower() in ("get", "post")
 
+# CF-Connecting-IP
 
 def get_ip_address(request: Request) -> Optional[str]:
     """

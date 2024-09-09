@@ -10,7 +10,20 @@ License:  Apache-2.0 license
 
 import re
 from re import Pattern
+
+import json
+import random
+import urllib.request
 from typing import Final, Optional
+
+try:
+    from src.BotBlocker.util.utils import cache_with_ttl
+except ImportError:
+    try:
+        from util.utils import cache_with_ttl
+    except ImportError:
+        from utils import cache_with_ttl
+
 
 UNWANTED_IPV4_RANGES: Final[list] = [
     ('0.0.0.0', '0.255.255.255'),
@@ -270,8 +283,11 @@ def reverse_ip(ip_address: str) -> str:
     """
     Reverse the IP address for DNS lookup.
 
-    :param ip_address: Ipv4 or Ipv6 address.
-    :return: The reversed IP address.
+    Args:
+        ip_address (str): The IP address to reverse.
+
+    Returns:
+        str: The reversed IP address.
     """
 
     if is_ipv6(ip_address):
@@ -280,3 +296,96 @@ def reverse_ip(ip_address: str) -> str:
         return ':'.join(reversed(ip_address))
 
     return '.'.join(reversed(ip_address.split('.')))
+
+
+@cache_with_ttl(28800)
+def is_ip_malicious_ipapi(ip_address: str) -> Optional[bool]:
+    """
+    Uses the IPApi.com API to check the reputation of the given IP address.
+
+    Args:
+        ip_address (str): The IP address to check.
+
+    Returns:
+        Optional[bool]: True if the IP address is malicious, False otherwise.
+    """
+
+    url = f"http://ip-api.com/json/{ip_address}?fields=proxy,hosting"
+
+    try:
+        with urllib.request.urlopen(url, timeout = 1) as response:
+            if response.getcode() != 200:
+                return None
+
+            data = response.read().decode('utf-8')
+            data = json.loads(data)
+
+            if not ('proxy' in data and 'hosting' in data):
+                return None
+
+            for key in ['proxy', 'hosting']:
+                if key in data and data[key] is True:
+                    return True
+    except:
+        return None
+
+    return False
+
+
+@cache_with_ttl(28800)
+def is_ip_malicious_ipintel(ip_address: str) -> Optional[bool]:
+    """
+    Uses the IPIntel.net API to check the reputation of the given IP address.
+
+    Args:
+        ip_address (str): The IP address to check.
+
+    Returns:
+        Optional[bool]: True if the IP address is malicious, False otherwise.
+    """
+
+    random_email = ''.join(
+        random.choice("abcdefghijklmnopqrstuvwxyz"
+                      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+                      for _ in range(4)) + '@gmail.com'
+
+    url = f"https://check.getipintel.net/check.php?ip={ip_address}&contact={random_email}"
+
+    try:
+        with urllib.request.urlopen(url, timeout = 1) as response:
+            if response.getcode() != 200:
+                return None
+
+            data = response.read().decode('utf-8')
+            if not data.isdigit():
+                return None
+
+            score = int(data)
+            if score > 0.90:
+                return True
+    except:
+        return None
+
+    return False
+
+
+def is_ip_malicious(ip_address: str) -> bool:
+    """
+    Checks whether the given IP address is malicious.
+
+    Args:
+        ip_address (str): The IP address to check.
+
+    Returns:
+        bool: True if the IP address is malicious, False otherwise.
+    """
+
+    ip_malicious_ipapi = is_ip_malicious_ipapi(ip_address)
+    if ip_malicious_ipapi is not None:
+        return ip_malicious_ipapi
+
+    ip_malicious_ipintel = is_ip_malicious_ipintel(ip_address)
+    if ip_malicious_ipintel is not None:
+        return ip_malicious_ipintel
+
+    return False
