@@ -407,4 +407,4 @@ JSON = JSONFile()
 
 
 if __name__ == "__main__":
-    print("file.py: This file is not designed to be executed.")
+    print("fileutil.py: This file is not designed to be executed.")

@@ -11,10 +11,15 @@ License:  Apache-2.0 license
 import re
 from re import Pattern
 
+import time
 import json
 import random
+import socket
+import urllib.error
 import urllib.request
+from urllib.parse import urlencode
 from typing import Final, Optional
+from datetime import datetime, timedelta
 
 try:
     from src.BotBlocker.util.utils import cache_with_ttl
@@ -149,7 +154,7 @@ def explode_ipv6(ipv6_address: str) -> str:
 
         expanded_groups.extend(['0000'] * missing_groups)
 
-    return expanded_groups
+    return ':'.join(expanded_groups)
 
 
 def ipv4_to_int(ipv4_address: str) -> int:
@@ -290,12 +295,8 @@ def reverse_ip(ip_address: str) -> str:
         str: The reversed IP address.
     """
 
-    if is_ipv6(ip_address):
-        ip_address = explode_ipv6(ip_address)
-
-        return ':'.join(reversed(ip_address))
-
-    return '.'.join(reversed(ip_address.split('.')))
+    symbol = ':' if ':' in ip_address else '.'
+    return symbol.join(reversed(ip_address.split(symbol)))
 
 
 @cache_with_ttl(28800)
@@ -389,3 +390,97 @@ def is_ip_malicious(ip_address: str) -> bool:
         return ip_malicious_ipintel
 
     return False
+
+
+@cache_with_ttl(28800)
+def is_ipv4_tor(ipv4_address: Optional[str] = None) -> bool:
+    """
+    Checks whether the given IPv4 address is Tor.
+
+    Args:
+        ipv4_address (str): The IPv4 address to check.
+
+    Returns:
+        bool: True if the IPv4 address is Tor, False otherwise.
+    """
+
+    query = reverse_ip(ipv4_address)
+
+    try:
+        resolved_ip = socket.gethostbyname(query)
+
+        if resolved_ip == '127.0.0.2':
+            return True
+
+    except socket.gaierror:
+        pass
+
+    return False
+
+
+@cache_with_ttl(28800)
+def is_ipv6_tor_exonerator(ipv6_address: Optional[str] = None) -> bool:
+    """
+    Checks whether the given IPv6 address is Tor using the Exonerator service.
+
+    Args:
+        ipv6_address (str): The IPv6 address to check.
+
+    Returns:
+        bool: True if the IPv6 address is Tor, False otherwise.
+    """
+
+    today = (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')
+
+    base_url = "https://metrics.torproject.org/exonerator.html"
+    query_params = {
+        "ip": ipv6_address,
+        "timestamp": today,
+        "lang": "en"
+    }
+    url = f"{base_url}?{urlencode(query_params)}"
+
+    headers = {'Range': 'bytes=0-'}
+
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=1) as response:
+            html = ''
+            while True:
+                chunk = response.read(128).decode('utf-8')
+                if not chunk:
+                    break
+
+                html += chunk
+                if "Result is positive" in html:
+                    print(html)
+                    return True
+
+    except urllib.error.URLError:
+        return False
+
+    return False
+
+
+def is_ip_tor(ip_address: Optional[str] = None) -> bool:
+    """
+    Checks whether the given IP address is Tor.
+
+    Args:
+        ip_address (str): The IP address to check.
+
+    Returns:
+        bool: True if the IP address is Tor, False otherwise.
+    """
+
+    if is_ipv4(ip_address):
+        return is_ipv4_tor(ip_address)
+
+    if is_ipv6(ip_address):
+        return is_ipv6_tor_exonerator(ip_address)
+
+    return False
+
+
+if __name__ == "__main__":
+    print("iputil.py: This file is not designed to be executed.")

@@ -129,3 +129,7 @@ def get_ip_address(request: Request) -> Optional[str]:
     """
 
     return request.headers.get('X-Forwarded-For', request.remote_addr)
+
+
+if __name__ == "__main__":
+    print("requestutil.py: This file is not designed to be executed.")
