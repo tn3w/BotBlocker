@@ -11,7 +11,6 @@ License:  Apache-2.0 license
 import re
 from re import Pattern
 
-import time
 import json
 import random
 import socket
@@ -440,11 +439,9 @@ def is_ipv6_tor_exonerator(ipv6_address: Optional[str] = None) -> bool:
     }
     url = f"{base_url}?{urlencode(query_params)}"
 
-    headers = {'Range': 'bytes=0-'}
-
-    req = urllib.request.Request(url, headers=headers)
+    req = urllib.request.Request(url, headers = {'Range': 'bytes=0-'})
     try:
-        with urllib.request.urlopen(req, timeout=1) as response:
+        with urllib.request.urlopen(req, timeout = 1) as response:
             html = ''
             while True:
                 chunk = response.read(128).decode('utf-8')
@@ -453,7 +450,6 @@ def is_ipv6_tor_exonerator(ipv6_address: Optional[str] = None) -> bool:
 
                 html += chunk
                 if "Result is positive" in html:
-                    print(html)
                     return True
 
     except urllib.error.URLError:
