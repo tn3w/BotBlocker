@@ -16,10 +16,10 @@ from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 
 try:
-    from src.BotBlocker.util.utils import handle_exception
+    from src.BotBlocker.utils.utils import handle_exception
 except ImportError:
     try:
-        from util.utils import handle_exception
+        from utils.utils import handle_exception
     except ImportError:
         from utils import handle_exception
 

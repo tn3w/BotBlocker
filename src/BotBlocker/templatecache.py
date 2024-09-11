@@ -12,12 +12,12 @@ import os
 
 try:
     from src.BotBlocker.cons import TEMPLATES_DIRECTORY_PATH
-    from BotBlocker.util.fileutils import read
-    from BotBlocker.util.htmlutils import minimize_html, minimize
+    from BotBlocker.utils.fileutils import read
+    from BotBlocker.utils.htmlutils import minimize_html, minimize
 except ImportError as exc:
     from cons import TEMPLATES_DIRECTORY_PATH
-    from util.fileutils import read
-    from util.htmlutils import minimize_html, minimize
+    from utils.fileutils import read
+    from utils.htmlutils import minimize_html, minimize
 
 
 class TemplateCache:

@@ -21,10 +21,10 @@ from typing import Final, Optional
 from datetime import datetime, timedelta
 
 try:
-    from src.BotBlocker.util.utils import cache_with_ttl
+    from src.BotBlocker.utils.utils import cache_with_ttl
 except ImportError:
     try:
-        from util.utils import cache_with_ttl
+        from utils.utils import cache_with_ttl
     except ImportError:
         from utils import cache_with_ttl
 
@@ -326,7 +326,7 @@ def is_ip_malicious_ipapi(ip_address: str) -> Optional[bool]:
             for key in ['proxy', 'hosting']:
                 if key in data and data[key] is True:
                     return True
-    except:
+    except urllib.error.URLError:
         return None
 
     return False
@@ -363,7 +363,7 @@ def is_ip_malicious_ipintel(ip_address: str) -> Optional[bool]:
             score = int(data)
             if score > 0.90:
                 return True
-    except:
+    except urllib.error.URLError:
         return None
 
     return False
