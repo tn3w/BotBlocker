@@ -264,12 +264,12 @@ def is_valid_ip(ip_address: Optional[str] = None,
         is_ipv4_address = is_ipv4(ip_address)
         is_ipv6_address = is_ipv6(ip_address)
 
-        if (is_unwanted_ipv4(ip_address) and is_ipv4_address) or\
-            (is_unwanted_ipv6(ip_address) and is_ipv6_address):
-
+        if not is_ipv4_address and not is_ipv6_address:
             return False
 
-        if not is_ipv4_address and not is_ipv6_address:
+        if (is_ipv4_address and is_unwanted_ipv4(ip_address)) or\
+            (is_ipv6_address and is_unwanted_ipv6(ip_address)):
+
             return False
 
     if is_ipv4(ip_address):
@@ -298,6 +298,13 @@ def reverse_ip(ip_address: str) -> str:
     return symbol.join(reversed(ip_address.split(symbol)))
 
 
+MALICIOUS_ISPS = [
+    "Fastly", "Incapsula", "Akamai", "AkamaiGslb", "Google", "Datacamp Limited",
+    "Bing", "Censys", "Hetzner", "Linode", "Amazon", "AWS", "DigitalOcean", "Vultr",
+    "Azure", "Alibaba", "Netlify", "IBM", "Oracle", "Scaleway", "Cloud"
+]
+
+
 @cache_with_ttl(28800)
 def is_ip_malicious_ipapi(ip_address: str) -> Optional[bool]:
     """
@@ -310,10 +317,10 @@ def is_ip_malicious_ipapi(ip_address: str) -> Optional[bool]:
         Optional[bool]: True if the IP address is malicious, False otherwise.
     """
 
-    url = f"http://ip-api.com/json/{ip_address}?fields=proxy,hosting"
+    url = f"http://ip-api.com/json/{ip_address}?fields=proxy,hosting,isp"
 
     try:
-        with urllib.request.urlopen(url, timeout = 1) as response:
+        with urllib.request.urlopen(url, timeout = 2) as response:
             if response.getcode() != 200:
                 return None
 
@@ -323,10 +330,19 @@ def is_ip_malicious_ipapi(ip_address: str) -> Optional[bool]:
             if not ('proxy' in data and 'hosting' in data):
                 return None
 
-            for key in ['proxy', 'hosting']:
-                if key in data and data[key] is True:
+            for key in ['proxy', 'hosting', 'isp']:
+                value = data.get(key, None)
+                if key == "isp":
+                    if not isinstance(value, str):
+                        continue
+
+                    for isp in MALICIOUS_ISPS:
+                        if isp.lower() in value.lower():
+                            return True
+
+                if value is True:
                     return True
-    except urllib.error.URLError:
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, json.JSONDecodeError):
         return None
 
     return False
@@ -352,7 +368,7 @@ def is_ip_malicious_ipintel(ip_address: str) -> Optional[bool]:
     url = f"https://check.getipintel.net/check.php?ip={ip_address}&contact={random_email}"
 
     try:
-        with urllib.request.urlopen(url, timeout = 1) as response:
+        with urllib.request.urlopen(url, timeout = 2) as response:
             if response.getcode() != 200:
                 return None
 
@@ -363,7 +379,7 @@ def is_ip_malicious_ipintel(ip_address: str) -> Optional[bool]:
             score = int(data)
             if score > 0.90:
                 return True
-    except urllib.error.URLError:
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError):
         return None
 
     return False
@@ -441,7 +457,7 @@ def is_ipv6_tor_exonerator(ipv6_address: Optional[str] = None) -> bool:
 
     req = urllib.request.Request(url, headers = {'Range': 'bytes=0-'})
     try:
-        with urllib.request.urlopen(req, timeout = 1) as response:
+        with urllib.request.urlopen(req, timeout = 3) as response:
             html = ''
             while True:
                 chunk = response.read(128).decode('utf-8')
@@ -452,7 +468,7 @@ def is_ipv6_tor_exonerator(ipv6_address: Optional[str] = None) -> bool:
                 if "Result is positive" in html:
                     return True
 
-    except urllib.error.URLError:
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError):
         return False
 
     return False
@@ -479,4 +495,5 @@ def is_ip_tor(ip_address: Optional[str] = None) -> bool:
 
 
 if __name__ == "__main__":
+    print(is_ip_malicious("2405:8100:8000:5ca1::54:540"))
     print("iputil.py: This file is not designed to be executed.")

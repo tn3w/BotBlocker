@@ -4,8 +4,10 @@ from flask import Flask, request
 
 try:
     from templatecache import TemplateCache
+    from utils.requestutils import get_ip_address
 except ImportError:
     from src.BotBlocker.templatecache import TemplateCache
+    from src.BotBlocker.utils.requestutils import get_ip_address
 
 
 class BotBlocker:
@@ -57,6 +59,8 @@ class BotBlocker:
             Tuple[str, int]: A tuple containing the rendered HTML template and
             the HTTP status code.
         """
+
+        print(get_ip_address(request))
 
         return self.template_cache.render(
             "access_denied.html", **self.get_default_replaces()

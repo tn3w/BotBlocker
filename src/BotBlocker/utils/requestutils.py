@@ -8,9 +8,18 @@ Author:   tn3w (mail@tn3w.dev)
 License:  Apache-2.0 license
 """
 
-from typing import Any, Optional
+from typing import Any, Optional, Final
 from urllib.parse import urlparse, urlunparse, urlencode, parse_qs, quote
 from flask import Request
+
+try:
+    from iputils import is_valid_ip
+except ImportError:
+    try:
+        from utils.iputils import is_valid_ip
+    except ImportError:
+        from src.BotBlocker.utils.iputils import is_valid_ip
+
 
 def get_json_data(request: Request, default: Any = None) -> Any:
     """
@@ -118,7 +127,63 @@ def is_get_or_post(request: Request) -> bool:
 
     return request.method.lower() in ("get", "post")
 
-# CF-Connecting-IP
+
+
+IP_SOURCES: Final[list[dict]] = [
+    {"headers": "CF-Connecting-IP"},
+    {"environ": "HTTP_X_REAL_IP"},
+    {"environ": "HTTP_CF_CONNECTING_IP"},
+    {"environ": "HTTP_X_FORWARDED_FOR"},
+    {"headers": "X-Forwarded-For"},
+    {"headers": "X-Real-IP"},
+    {"headers": "X-Cluster-Client-Ip"},
+    {"headers": "X-Forwarded"},
+    {"headers": "True-Client-Ip"},
+    {"headers": "X-Appengine-User-Ip"},
+    {"environ": "REMOTE_ADDR"},
+    {"request": "remote_addr"},
+    {"environ": "HTTP_X_REAL_IP_V6"},
+    {"environ": "HTTP_CF_CONNECTING_IP_V6"},
+    {"headers": "CF-Connecting-IP-V6"},
+    {"environ": "HTTP_X_FORWARDED_FOR_V6"},
+    {"headers": "X-Forwarded-For-V6"},
+    {"headers": "X-Real-IP-V6"},
+    {"headers": "X-Cluster-Client-Ip-V6"},
+    {"headers": "X-Forwarded-V6"},
+    {"headers": "True-Client-Ip-V6"},
+    {"headers": "X-Appengine-User-Ip-V6"},
+    {"environ": "REMOTE_ADDR_V6"},
+    {"request": "remote_addr_v6"}
+]
+
+def test(request: Request) -> bool:
+    ip_list = set()
+
+    for source in IP_SOURCES:
+        source_type = list(source.keys())[0]
+        source_key = list(source.values())[0]
+
+        if source_type == "environ":
+            ip = request.environ.get(source_key)
+        elif source_type == "headers":
+            ip = request.headers.get(source_key)
+        else:
+            ip = getattr(request, source_key, None)
+
+        if ip:
+            ip_list.add(ip)
+
+    print(ip_list)
+    return True
+
+
+IP_SOURCS: Final[list[tuple]] = [
+    "X-Real-Ip", "CF-Connecting-IP",
+    "X-Forwarded-For", "X-Real-IP",
+    "X-Cluster-Client-Ip", "X-Forwarded",
+    "True-Client-Ip", "X-Appengine-User-Ip",
+    "REMOTE_ADDR",
+]
 
 def get_ip_address(request: Request) -> Optional[str]:
     """
@@ -128,7 +193,35 @@ def get_ip_address(request: Request) -> Optional[str]:
     :return: The IP address
     """
 
-    return request.headers.get('X-Forwarded-For', request.remote_addr)
+    ip_list = set()
+
+    for source in IP_SOURCS:
+        if source == "REMOTE_ADDR":
+            ip = request.remote_addr
+            if ip:
+                ip_list.add(ip)
+
+            continue
+
+        for i in range(2):
+            if i == 1:
+                source = source + "-V6"
+
+            for method in ["environ", "headers"]:
+                if method == "headers":
+                    ip = request.headers.get(source)
+                else:
+                    source = "HTTP_" + source.upper().replace("-", "_")
+                    ip = request.environ.get(source)
+
+                if ip:
+                    ip_list.add(ip)
+
+    for ip in ip_list:
+        if is_valid_ip(ip):
+            return ip
+
+    return None
 
 
 if __name__ == "__main__":

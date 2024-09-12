@@ -12,8 +12,8 @@ import os
 
 try:
     from src.BotBlocker.cons import TEMPLATES_DIRECTORY_PATH
-    from BotBlocker.utils.fileutils import read
-    from BotBlocker.utils.htmlutils import minimize_html, minimize
+    from src.BotBlocker.utils.fileutils import read
+    from src.BotBlocker.utils.htmlutils import minimize_html, minimize
 except ImportError as exc:
     from cons import TEMPLATES_DIRECTORY_PATH
     from utils.fileutils import read
