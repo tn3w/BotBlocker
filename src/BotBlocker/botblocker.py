@@ -47,7 +47,7 @@ class BotBlocker(BaseProperties):
             "path": request.path,
             "ray_id": "1111111",
             "client_country": "US",
-            "client_ip": self.client_ip or "127.0.0.1",
+            "client_ip": " — IP: " + self.client_ip if self.client_ip is not None else "",
             "client_user_agent": request.user_agent.string,
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S") + " UTC",
         }
@@ -61,8 +61,6 @@ class BotBlocker(BaseProperties):
             Tuple[str, int]: A tuple containing the rendered HTML template and
             the HTTP status code.
         """
-
-        print(get_ip_address(request))
 
         return self.template_cache.render(
             "access_denied.html", **self.get_default_replaces()
