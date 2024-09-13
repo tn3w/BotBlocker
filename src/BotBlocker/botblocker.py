@@ -5,12 +5,14 @@ from flask import Flask, request
 try:
     from templatecache import TemplateCache
     from utils.requestutils import get_ip_address
+    from baseproperties import BaseProperties
 except ImportError:
     from src.BotBlocker.templatecache import TemplateCache
     from src.BotBlocker.utils.requestutils import get_ip_address
+    from src.BotBlocker.baseproperties import BaseProperties
 
 
-class BotBlocker:
+class BotBlocker(BaseProperties):
     """ 
     A class for blocking bots from accessing the website.
     """
@@ -45,7 +47,7 @@ class BotBlocker:
             "path": request.path,
             "ray_id": "1111111",
             "client_country": "US",
-            "client_ip": "127.0.0.1",
+            "client_ip": self.client_ip or "127.0.0.1",
             "client_user_agent": request.user_agent.string,
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S") + " UTC",
         }
