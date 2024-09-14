@@ -1,13 +1,15 @@
-from typing import Tuple
+from typing import Tuple, Optional
 from datetime import datetime, timezone
 from flask import Flask, request
 
 try:
     from templatecache import TemplateCache
     from baseproperties import BaseProperties
+    from utils.iputils import is_ip_malicious, is_ip_tor
 except ImportError:
     from src.BotBlocker.templatecache import TemplateCache
     from src.BotBlocker.baseproperties import BaseProperties
+    from src.BotBlocker.utils.iputils import is_ip_malicious, is_ip_tor
 
 
 class BotBlocker(BaseProperties):
@@ -29,7 +31,7 @@ class BotBlocker(BaseProperties):
         """
 
         app = self.app
-        app.before_request(self.access_denied)
+        app.before_request(self.check_client)
 
 
     def get_default_replaces(self) -> dict:
@@ -63,3 +65,18 @@ class BotBlocker(BaseProperties):
         return self.template_cache.render(
             "access_denied.html", **self.get_default_replaces()
         ), 403
+
+
+    def check_client(self) -> Optional[str]:
+        client_ip = self.client_ip
+
+        if client_ip is None:
+            return self.access_denied()
+
+        if is_ip_malicious(client_ip):
+            return self.access_denied()
+
+        if is_ip_tor(client_ip):
+            return self.access_denied()
+
+        return None
