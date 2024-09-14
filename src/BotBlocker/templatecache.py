@@ -75,8 +75,6 @@ class TemplateCache:
                 file_name, extension = os.path.splitext(asset_file_name)[:2]
                 self._assets[file_name] = minimize(asset_file_content, extension)
 
-        print(self._assets)
-
 
     def render(self, template_name: str, **kwargs) -> str:
         """

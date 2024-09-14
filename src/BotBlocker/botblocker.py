@@ -4,11 +4,9 @@ from flask import Flask, request
 
 try:
     from templatecache import TemplateCache
-    from utils.requestutils import get_ip_address
     from baseproperties import BaseProperties
 except ImportError:
     from src.BotBlocker.templatecache import TemplateCache
-    from src.BotBlocker.utils.requestutils import get_ip_address
     from src.BotBlocker.baseproperties import BaseProperties
 
 

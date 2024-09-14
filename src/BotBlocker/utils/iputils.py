@@ -301,7 +301,7 @@ def reverse_ip(ip_address: str) -> str:
 MALICIOUS_ISPS = [
     "Fastly", "Incapsula", "Akamai", "AkamaiGslb", "Google", "Datacamp Limited",
     "Bing", "Censys", "Hetzner", "Linode", "Amazon", "AWS", "DigitalOcean", "Vultr",
-    "Azure", "Alibaba", "Netlify", "IBM", "Oracle", "Scaleway", "Cloud"
+    "Azure", "Alibaba", "Netlify", "IBM", "Oracle", "Scaleway", "Cloud", "VPN"
 ]
 
 
@@ -317,22 +317,20 @@ def is_ip_malicious_ipapi(ip_address: str) -> Optional[bool]:
         Optional[bool]: True if the IP address is malicious, False otherwise.
     """
 
-    url = f"http://ip-api.com/json/{ip_address}?fields=proxy,hosting,isp"
+    url = f"http://ip-api.com/json/{ip_address}?fields=proxy,hosting,as"
 
     try:
         with urllib.request.urlopen(url, timeout = 2) as response:
             if response.getcode() != 200:
                 return None
 
-            data = response.read().decode('utf-8')
+            data = response.read().decode("utf-8")
             data = json.loads(data)
 
-            if not ('proxy' in data and 'hosting' in data):
-                return None
-
-            for key in ['proxy', 'hosting', 'isp']:
+            some_data_provided = False
+            for key in ["proxy", "hosting", "as"]:
                 value = data.get(key, None)
-                if key == "isp":
+                if key == "as":
                     if not isinstance(value, str):
                         continue
 
@@ -342,6 +340,13 @@ def is_ip_malicious_ipapi(ip_address: str) -> Optional[bool]:
 
                 if value is True:
                     return True
+
+                if value is not None:
+                    some_data_provided = True
+
+            if not some_data_provided:
+                return None
+
     except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, json.JSONDecodeError):
         return None
 
@@ -495,5 +500,4 @@ def is_ip_tor(ip_address: Optional[str] = None) -> bool:
 
 
 if __name__ == "__main__":
-    print(is_ip_malicious("2405:8100:8000:5ca1::54:540"))
     print("iputil.py: This file is not designed to be executed.")
