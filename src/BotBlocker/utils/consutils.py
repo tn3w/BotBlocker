@@ -7,14 +7,12 @@ License:  Apache-2.0 license
 """
 
 import os
-from typing import Final, Tuple
+from typing import Final, Tuple, Dict
 
 
 CURRENT_DIRECTORY_PATH: Final[str] = os.path.dirname(os.path.abspath(__file__))\
-    .replace("\\\\", "\\")\
-    .replace("\\", "/")\
-    .replace("/src/BotBlocker", "")\
-    .replace("/src", "")
+    .replace("\\\\", "\\").replace("\\", "/").replace("//", "/")\
+    .replace("/src/BotBlocker/utils", "").replace("/src/BotBlocker", "").replace("/src", "")
 
 is_test_environment: bool = os.path.exists(os.path.join(CURRENT_DIRECTORY_PATH, '.test'))
 if not is_test_environment:
@@ -66,5 +64,21 @@ if not os.path.exists(DATA_DIRECTORY_PATH):
 DATASETS_DIRECTORY_PATH: Final[str] = os.path.join(DATA_DIRECTORY_PATH, "datasets")
 
 
+GEOLITE_DATABASES: Final[Dict[str, dict]] = {
+    "city": {
+        "url": "https://git.io/GeoLite2-City.mmdb",
+        "data_path": os.path.join(DATA_DIRECTORY_PATH, "GeoLite2-City.mmdb"),
+    },
+    "asn": {
+        "url": "https://git.io/GeoLite2-ASN.mmdb",
+        "data_path": os.path.join(DATA_DIRECTORY_PATH, "GeoLite2-ASN.mmdb"),
+    },
+    "anonymous": {
+        "url": None,
+        "data_path": os.path.join(DATA_DIRECTORY_PATH, "GeoLite2-Anonymous.mmdb"),
+    }
+}
+
+
 if __name__ == "__main__":
-    print("cons.py: This file is not designed to be executed.")
+    print("consutils.py: This file is not designed to be executed.")

@@ -11,7 +11,7 @@ import os
 import json
 import pickle
 import shutil
-from typing import Any
+from typing import Optional, Any
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 
@@ -41,13 +41,13 @@ def can_read(file_path: str) -> bool:
     return os.access(file_path, os.R_OK)
 
 
-def can_write(file_path: str, content_size: int) -> bool:
+def can_write(file_path: str, content_size: Optional[int] = None) -> bool:
     """
     Checks if a file can be written to.
 
     Args:
         file_path (str): The path to the file to check.
-        content_size (int): The size of the content to write to the file.
+        content_size (Optional[int]): The size of the content to write to the file.
 
     Returns:
         bool: True if the file can be written to, False otherwise.    
@@ -60,14 +60,16 @@ def can_write(file_path: str, content_size: int) -> bool:
     if not os.access(directory_path, os.W_OK):
         return False
 
-    if not os.path.getsize(directory_path) + content_size\
-        <= os.stat(directory_path).st_blksize:
-        return False
+    if content_size is not None:
+        if not os.path.getsize(directory_path)\
+            + content_size <= os.stat(directory_path).st_blksize:
+
+            return False
 
     return True
 
 
-def has_subdirectory(directory_path: str) -> bool:
+def is_directory_empty(directory_path: str) -> bool:
     """
     Checks if a directory has any subdirectories.
 
@@ -79,14 +81,14 @@ def has_subdirectory(directory_path: str) -> bool:
     """
 
     if not os.path.isdir(directory_path):
-        return False
+        return True
 
     for entry in os.listdir(directory_path):
         full_path = os.path.join(directory_path, entry)
-        if os.path.isdir(full_path):
-            return True
+        if os.path.exists(full_path):
+            return False
 
-    return False
+    return True
 
 
 def read(file_path: str, as_bytes: bool = False, default: Any = None) -> Any:
@@ -163,7 +165,7 @@ def delete(object_path: str) -> bool:
 
     try:
         if os.path.isdir(object_path):
-            if has_subdirectory(object_path):
+            if is_directory_empty(object_path):
                 shutil.rmtree(object_path)
                 return True
 

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1.0">
+        <title>Verify you are human</title>
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline';">
+        <style>{BASE}
+            main {
+                text-align: center;
+                padding: 0 20px;
+            }
+
+            .oi {
+                width: 200px;
+                height: 200px;
+                display: block;
+                margin: 0 auto;
+                border-radius: 5px;
+                box-shadow: 0 0 10px var(--border);
+            }
+
+            .c {
+                font-size: 18px;
+                margin: 0 auto;
+                padding-top: 20px;
+            }
+
+            .ig {
+                display: grid;
+                grid-template-columns: repeat(6, 1fr);
+                grid-gap: 10px;
+                margin-top: 20px;
+            }
+
+            .gi {
+                width: 100px;
+                height: 100px;
+                border-radius: 5px;
+                box-shadow: 2px 2px 5px var(--text-color);
+            }
+
+            @media only screen and (max-width: 670px) {
+                .ig {
+                    grid-template-columns: repeat(3, 1fr);
+                }
+            }
+
+            @media only screen and (max-width: 400px) {
+                .ig {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <img src="{ORIGINAL_IMAGE}" alt="Original Image" class="oi">
+            <p class="c">{CAPTION}</p>{ERROR}
+            <div class="ig">
+                <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=1"><img src="{IMAGE1}" class="gi" alt="Image 1"></a>
+                <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=2"><img src="{IMAGE2}" class="gi" alt="Image 2"></a>
+                <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=3"><img src="{IMAGE3}" class="gi" alt="Image 3"></a>
+                <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=4"><img src="{IMAGE4}" class="gi" alt="Image 4"></a>
+                <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=5"><img src="{IMAGE5}" class="gi" alt="Image 5"></a>
+                <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=6"><img src="{IMAGE6}" class="gi" alt="Image 6"></a>
+            </div>
+        </main>
+    </body>
+</html>

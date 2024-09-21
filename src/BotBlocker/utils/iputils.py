@@ -21,12 +21,18 @@ from typing import Final, Optional
 from datetime import datetime, timedelta
 
 try:
+    from src.BotBlocker.utils.fileutils import can_read
     from src.BotBlocker.utils.utils import cache_with_ttl
+    from src.BotBlocker.utils.consutils import DATA_DIRECTORY_PATH
 except ImportError:
     try:
+        from utils.fileutils import can_read
         from utils.utils import cache_with_ttl
+        from utils.consutils import DATA_DIRECTORY_PATH
     except ImportError:
         from utils import cache_with_ttl
+        from consutils import DATA_DIRECTORY_PATH
+        from fileutils import can_read
 
 
 UNWANTED_IPV4_RANGES: Final[list] = [
@@ -390,7 +396,7 @@ def is_ip_malicious_ipintel(ip_address: str) -> Optional[bool]:
     return False
 
 
-def is_ip_malicious(ip_address: str) -> bool:
+def is_ip_malicious(ip_address: str, third_parties: Optional[list] = None) -> bool:
     """
     Checks whether the given IP address is malicious.
 
@@ -400,6 +406,9 @@ def is_ip_malicious(ip_address: str) -> bool:
     Returns:
         bool: True if the IP address is malicious, False otherwise.
     """
+
+    if third_parties is None:
+        third_parties = ["ipapi", "ipintel", "geoip"]
 
     ip_malicious_ipapi = is_ip_malicious_ipapi(ip_address)
     if ip_malicious_ipapi is not None:
@@ -439,12 +448,12 @@ def is_ipv4_tor(ipv4_address: Optional[str] = None) -> bool:
 
 
 @cache_with_ttl(28800)
-def is_ipv6_tor_exonerator(ipv6_address: Optional[str] = None) -> bool:
+def is_ip_tor_exonerator(ip_address: Optional[str] = None) -> bool:
     """
-    Checks whether the given IPv6 address is Tor using the Exonerator service.
+    Checks whether the given IP address is Tor using the Exonerator service.
 
     Args:
-        ipv6_address (str): The IPv6 address to check.
+        ip_address (str): The IPv6 address to check.
 
     Returns:
         bool: True if the IPv6 address is Tor, False otherwise.
@@ -454,7 +463,7 @@ def is_ipv6_tor_exonerator(ipv6_address: Optional[str] = None) -> bool:
 
     base_url = "https://metrics.torproject.org/exonerator.html"
     query_params = {
-        "ip": ipv6_address,
+        "ip": ip_address,
         "timestamp": today,
         "lang": "en"
     }
@@ -479,22 +488,28 @@ def is_ipv6_tor_exonerator(ipv6_address: Optional[str] = None) -> bool:
     return False
 
 
-def is_ip_tor(ip_address: Optional[str] = None) -> bool:
+def is_ip_tor(ip_address: str, third_parties: Optional[list] = None) -> bool:
     """
     Checks whether the given IP address is Tor.
 
     Args:
         ip_address (str): The IP address to check.
+        third_parties (Optional[list]): A list of third-party services to use for the check.
 
     Returns:
         bool: True if the IP address is Tor, False otherwise.
     """
 
-    if is_ipv4(ip_address):
+    if third_parties is None:
+        third_parties = ["tor_hostname", "tor_exonerator"]
+
+    if "tor_hostname" in third_parties and is_ipv4(ip_address):
         return is_ipv4_tor(ip_address)
 
-    if is_ipv6(ip_address):
-        return is_ipv6_tor_exonerator(ip_address)
+    if (is_ipv6(ip_address) or "tor_hostname" not in third_parties)\
+        and "tor_exonerator" in third_parties:
+
+        return is_ip_tor_exonerator(ip_address)
 
     return False
 

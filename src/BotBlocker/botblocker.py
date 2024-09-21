@@ -10,16 +10,16 @@ License:  Apache-2.0 license
 
 from datetime import datetime, timezone
 from typing import Final, Union, Tuple, Optional, Dict
-from flask import Flask, request
+from flask import Flask, request, g
 
 try:
     from templatecache import TemplateCache
-    from cons import DATASETS_DIRECTORY_PATH
     from baseproperties import BaseProperties
+    from utils.consutils import DATASETS_DIRECTORY_PATH
     from utils.iputils import is_ip_malicious, is_ip_tor
 except ImportError:
     from src.BotBlocker.templatecache import TemplateCache
-    from src.BotBlocker.cons import DATASETS_DIRECTORY_PATH
+    from src.BotBlocker.utils.consutils import DATASETS_DIRECTORY_PATH
     from src.BotBlocker.baseproperties import BaseProperties
     from src.BotBlocker.utils.iputils import is_ip_malicious, is_ip_tor
 
@@ -53,7 +53,7 @@ DEFAULT_SETTINGS: Final[Dict[str, Union[str, int, bool]]] = {
     "without_cookies": False, "without_arg_transfer": False, "without_watermark": False,
 
     # Miscellaneous
-    "debug": False, "third_parties": DEFAULT_THIRD_PARTIES,
+    "debug": False, "third_parties": DEFAULT_THIRD_PARTIES
 }
 
 
@@ -105,6 +105,18 @@ class BotBlocker(BaseProperties):
         app.before_request(self.check_client)
 
 
+    @property
+    def settings(self) -> dict:
+        base_settings = self.default_settings.copy()
+
+        cached_settings = getattr(g, "captchaify_settings", None)
+        if isinstance(cached_settings, dict):
+            base_settings.update(cached_settings)
+            return base_settings
+
+
+
+
     def get_default_replaces(self) -> dict:
         """
         Get the default replacements for the template.
@@ -146,7 +158,7 @@ class BotBlocker(BaseProperties):
         client_ip = self.client_ip
 
         if client_ip is None:
-            return self.captcha()
+            return self.access_denied()
 
         if is_ip_malicious(client_ip):
             return self.captcha()
