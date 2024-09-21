@@ -94,6 +94,7 @@ def download_file(url: str, file_path: str, timeout: int = 3) -> bool:
     return False
 
 
+@cache_with_ttl(28800)
 def download_geoip_databases() -> dict:
     """
     Downloads GeoIP databases and returns their file paths.
@@ -199,13 +200,13 @@ class CityGeoIP(GeoIP):
     information based on IP addresses.
 
     Methods:
-        get(ip_address: str) -> Optional[dict]: Retrieves city-level geographical
+        get(ip_address: str) -> dict: Retrieves city-level geographical
         information for the specified IP address.
     """
 
 
     @cache_with_ttl(28800)
-    def get(self, ip_address: str) -> Optional[dict]:
+    def get(self, ip_address: str) -> dict:
         """
         Retrieves city-level geographical information for the given IP address.
 
@@ -216,13 +217,27 @@ class CityGeoIP(GeoIP):
             ip_address (str): The IP address to look up.
 
         Returns:
-            Optional[dict]: A dictionary containing city-level geographical information,
-            including city name, postal code, country details, and more,
-            or None if the information cannot be retrieved.
+            dict: A dictionary containing city-level geographical information,
+            including city name, postal code, country details, and more.
         """
 
+        keys = [
+            "city_name", "city_names", "city_locales", "city_confidence",
+            "city_geoname_id", "postal_code", "postal_confidence", "county_name",
+            "county_names", "country_locales", "country_is_in_eu", "country_confidence",
+            "country_iso_code", "country_geoname_id", "registered_country_name",
+            "registered_country_names", "registered_country_locales",
+            "registered_country_is_in_eu", "registered_country_confidence",
+            "registered_country_iso_code", "registered_country_geoname_id",
+            "continent_name", "continent_names", "continent_locales",
+            "continent_code", "continent_geoname_id", "time_zone", "accuracy_radius",
+            "latitude", "longitude", "metro_code", "population_density", "locales"
+        ]
+
+        default = {key: None for key in keys}
+
         if not self.is_available:
-            return None
+            return default
 
         try:
             city_location = self.reader.city(ip_address)
@@ -269,7 +284,7 @@ class CityGeoIP(GeoIP):
                 "time_zone": city_location.location.time_zone,
                 "accuracy_radius": city_location.location.accuracy_radius,
                 "latitude": city_location.location.latitude,
-                "long": city_location.location.longitude,
+                "longitude": city_location.location.longitude,
                 "metro_code": city_location.location.metro_code,
                 "population_density": city_location.location.population_density,
                 "locales": city_location._locales
@@ -277,7 +292,7 @@ class CityGeoIP(GeoIP):
         except (AddressNotFoundError, GeoIP2Error):
             pass
 
-        return None
+        return default
 
 
 class ASNGeoIP(GeoIP):

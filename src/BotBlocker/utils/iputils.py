@@ -21,18 +21,15 @@ from typing import Final, Optional
 from datetime import datetime, timedelta
 
 try:
-    from src.BotBlocker.utils.fileutils import can_read
     from src.BotBlocker.utils.utils import cache_with_ttl
-    from src.BotBlocker.utils.consutils import DATA_DIRECTORY_PATH
+    from src.BotBlocker.utils.geoiputils import GeoIP, get_geoip
 except ImportError:
     try:
-        from utils.fileutils import can_read
         from utils.utils import cache_with_ttl
-        from utils.consutils import DATA_DIRECTORY_PATH
+        from utils.geoiputils import GeoIP, get_geoip
     except ImportError:
         from utils import cache_with_ttl
-        from consutils import DATA_DIRECTORY_PATH
-        from fileutils import can_read
+        from utils.geoiputils import GeoIP, get_geoip
 
 
 UNWANTED_IPV4_RANGES: Final[list] = [
@@ -304,13 +301,6 @@ def reverse_ip(ip_address: str) -> str:
     return symbol.join(reversed(ip_address.split(symbol)))
 
 
-MALICIOUS_ISPS = [
-    "Fastly", "Incapsula", "Akamai", "AkamaiGslb", "Google", "Datacamp Limited",
-    "Bing", "Censys", "Hetzner", "Linode", "Amazon", "AWS", "DigitalOcean", "Vultr",
-    "Azure", "Alibaba", "Netlify", "IBM", "Oracle", "Scaleway", "Cloud", "VPN"
-]
-
-
 @cache_with_ttl(28800)
 def is_ip_malicious_ipapi(ip_address: str) -> Optional[bool]:
     """
@@ -323,7 +313,7 @@ def is_ip_malicious_ipapi(ip_address: str) -> Optional[bool]:
         Optional[bool]: True if the IP address is malicious, False otherwise.
     """
 
-    url = f"http://ip-api.com/json/{ip_address}?fields=proxy,hosting,as"
+    url = f"http://ip-api.com/json/{ip_address}?fields=proxy,hosting"
 
     try:
         with urllib.request.urlopen(url, timeout = 2) as response:
@@ -334,16 +324,8 @@ def is_ip_malicious_ipapi(ip_address: str) -> Optional[bool]:
             data = json.loads(data)
 
             some_data_provided = False
-            for key in ["proxy", "hosting", "as"]:
+            for key in ["proxy", "hosting"]:
                 value = data.get(key, None)
-                if key == "as":
-                    if not isinstance(value, str):
-                        continue
-
-                    for isp in MALICIOUS_ISPS:
-                        if isp.lower() in value.lower():
-                            return True
-
                 if value is True:
                     return True
 
@@ -396,6 +378,48 @@ def is_ip_malicious_ipintel(ip_address: str) -> Optional[bool]:
     return False
 
 
+MALICIOUS_ASNS: Final[str] = [
+    "Fastly", "Incapsula", "Akamai", "AkamaiGslb", "Google", "Datacamp Limited",
+    "Bing", "Censys", "Hetzner", "Linode", "Amazon", "AWS", "DigitalOcean", "Vultr",
+    "Azure", "Alibaba", "Netlify", "IBM", "Oracle", "Scaleway", "Cloud", "VPN"
+]
+
+
+@cache_with_ttl(28800)
+def is_ip_malicious_geoip(ip_address: str) -> bool:
+    """
+    Checks the reputation of the given IP address using GeoIP databases.<
+
+    Args:
+        ip_address (str): The IP address to check.
+
+    Returns:
+        bool: True if the IP address is found to be malicious.
+    """
+
+    geoip = get_geoip()
+    for db_name in ["asn", "anonymous"]:
+        database: Optional[GeoIP] = geoip.get(db_name, None)
+        if database is None:
+            continue
+
+        ip_address_info = database.get(ip_address)
+        if db_name == "asn":
+            normalized_ip_address_info = ip_address_info.get("asorg", "").lower()
+            for malicious_as in MALICIOUS_ASNS:
+                if malicious_as.lower() in normalized_ip_address_info:
+                    return True
+
+            if ip_address_info.get("network_is_global") is False:
+                return True
+
+        if db_name == "is_anonymous":
+            if any(key for key in ip_address_info):
+                return True
+
+    return False
+
+
 def is_ip_malicious(ip_address: str, third_parties: Optional[list] = None) -> bool:
     """
     Checks whether the given IP address is malicious.
@@ -410,13 +434,20 @@ def is_ip_malicious(ip_address: str, third_parties: Optional[list] = None) -> bo
     if third_parties is None:
         third_parties = ["ipapi", "ipintel", "geoip"]
 
-    ip_malicious_ipapi = is_ip_malicious_ipapi(ip_address)
-    if ip_malicious_ipapi is not None:
-        return ip_malicious_ipapi
+    if "ipapi" in third_parties:
+        ip_malicious_ipapi = is_ip_malicious_ipapi(ip_address)
+        if ip_malicious_ipapi is not None:
+            return ip_malicious_ipapi
 
-    ip_malicious_ipintel = is_ip_malicious_ipintel(ip_address)
-    if ip_malicious_ipintel is not None:
-        return ip_malicious_ipintel
+    if "ipintel" in third_parties:
+        ip_malicious_ipintel = is_ip_malicious_ipintel(ip_address)
+        if ip_malicious_ipintel is not None:
+            return ip_malicious_ipintel
+
+    if "geoip" in third_parties:
+        ip_malicious_geoip = is_ip_malicious_geoip(ip_address)
+        if ip_malicious_geoip is True:
+            return ip_malicious_geoip
 
     return False
 
