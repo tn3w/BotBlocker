@@ -58,6 +58,12 @@ SRC_DIRECTORY_PATH: Final[str] = os.path.join(WORK_DIRECTORY_PATH, 'src', 'BotBl
     if TEST_ENVIRONMENT else WORK_DIRECTORY_PATH\
 
 TEMPLATES_DIRECTORY_PATH: Final[str] = os.path.join(SRC_DIRECTORY_PATH, 'templates')
+DATA_DIRECTORY_PATH: Final[str] = os.path.join(SRC_DIRECTORY_PATH, "data")
+
+if not os.path.exists(DATA_DIRECTORY_PATH):
+    os.makedirs(DATA_DIRECTORY_PATH, exist_ok = True)
+
+DATASETS_DIRECTORY_PATH: Final[str] = os.path.join(DATA_DIRECTORY_PATH, "datasets")
 
 
 if __name__ == "__main__":
