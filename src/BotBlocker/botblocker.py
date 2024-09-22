@@ -115,8 +115,6 @@ class BotBlocker(BaseProperties):
             return base_settings
 
 
-
-
     def get_default_replaces(self) -> dict:
         """
         Get the default replacements for the template.

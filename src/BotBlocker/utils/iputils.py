@@ -533,7 +533,7 @@ def is_ip_malicious(ip_address: str, third_parties: Optional[list] = None) -> bo
         "ipapi": is_ip_malicious_ipapi,
         "ipintel": is_ip_malicious_ipintel,
         "geoip": is_ip_malicious_geoip,
-    }:
+    }.items():
 
         is_allowed = False
         for allowed_third_party in third_parties:
