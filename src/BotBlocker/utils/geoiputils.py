@@ -166,6 +166,16 @@ class GeoIP:
 
 
     @property
+    def fields(self) -> list:
+        """
+        Retrieves a list of field names related to geographical and location-based data.
+
+        Returns:
+            list: A list of strings representing the field names.
+        """
+
+
+    @property
     def is_available(self) -> bool:
         """
         Checks the availability of the GeoIP database reader.
@@ -205,6 +215,22 @@ class CityGeoIP(GeoIP):
     """
 
 
+    @property
+    def fields(self) -> list:
+        return [
+            "city_name", "city_names", "city_locales", "city_confidence",
+            "city_geoname_id", "postal_code", "postal_confidence", "county_name",
+            "county_names", "country_locales", "country_is_in_eu", "country_confidence",
+            "country_iso_code", "country_geoname_id", "registered_country_name",
+            "registered_country_names", "registered_country_locales",
+            "registered_country_is_in_eu", "registered_country_confidence",
+            "registered_country_iso_code", "registered_country_geoname_id",
+            "continent_name", "continent_names", "continent_locales",
+            "continent_code", "continent_geoname_id", "time_zone", "accuracy_radius",
+            "latitude", "longitude", "metro_code", "population_density", "locales"
+        ]
+
+
     @cache_with_ttl(28800)
     def get(self, ip_address: str) -> dict:
         """
@@ -221,20 +247,7 @@ class CityGeoIP(GeoIP):
             including city name, postal code, country details, and more.
         """
 
-        keys = [
-            "city_name", "city_names", "city_locales", "city_confidence",
-            "city_geoname_id", "postal_code", "postal_confidence", "county_name",
-            "county_names", "country_locales", "country_is_in_eu", "country_confidence",
-            "country_iso_code", "country_geoname_id", "registered_country_name",
-            "registered_country_names", "registered_country_locales",
-            "registered_country_is_in_eu", "registered_country_confidence",
-            "registered_country_iso_code", "registered_country_geoname_id",
-            "continent_name", "continent_names", "continent_locales",
-            "continent_code", "continent_geoname_id", "time_zone", "accuracy_radius",
-            "latitude", "longitude", "metro_code", "population_density", "locales"
-        ]
-
-        default = {key: None for key in keys}
+        default = {key: None for key in self.fields}
 
         if not self.is_available:
             return default
@@ -308,6 +321,15 @@ class ASNGeoIP(GeoIP):
     """
 
 
+    @property
+    def fields(self) -> list:
+        return [
+            "asn", "asorg", "network_is_global", "network_is_link_local",
+            "network_is_loopback", "network_is_multicast", "network_is_private",
+            "network_is_reserved", "network_is_unspecified"
+        ]
+
+
     @cache_with_ttl(28800)
     def get(self, ip_address: str) -> dict:
         """
@@ -324,11 +346,11 @@ class ASNGeoIP(GeoIP):
             including ASN number, organization name, and network characteristics.
         """
 
-        keys = {
+        keys = [
             "network_is_global", "network_is_link_local",
             "network_is_loopback", "network_is_multicast", "network_is_private",
             "network_is_reserved", "network_is_unspecified"
-        }
+        ]
 
         default = {"asn": None, "asorg": None}
         default.update({key: False for key in keys})
@@ -373,6 +395,14 @@ class AnonymousGeoIP(GeoIP):
     """
 
 
+    @property
+    def fields(self) -> list:
+        return [
+            "is_anonymous", "is_anonymous_vpn", "is_hosting_provider",
+            "is_public_proxy", "is_residential_proxy", "is_tor_exit_node"
+        ]
+
+
     @cache_with_ttl(28800)
     def get(self, ip_address: str) -> dict:
         """
@@ -391,12 +421,7 @@ class AnonymousGeoIP(GeoIP):
             public proxy status, residential proxy status, and Tor exit node status.
         """
 
-        keys = [
-            "is_anonymous", "is_anonymous_vpn", "is_hosting_provider",
-            "is_public_proxy", "is_residential_proxy", "is_tor_exit_node"
-        ]
-
-        default = {key: False for key in keys}
+        default = {key: False for key in self.fields}
 
         if not self.is_available:
             return default

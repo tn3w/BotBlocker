@@ -8,6 +8,7 @@ Author:   tn3w (mail@tn3w.dev)
 License:  Apache-2.0 license
 """
 
+from urllib.parse import urlparse
 from datetime import datetime, timezone
 from typing import Final, Union, Tuple, Optional, Dict
 from flask import Flask, request, g
@@ -15,13 +16,19 @@ from flask import Flask, request, g
 try:
     from templatecache import TemplateCache
     from baseproperties import BaseProperties
+    from utils.geoiputils import GeoIP, get_geoip
+    from utils.utils import get_fields, matches_rule
     from utils.consutils import DATASETS_DIRECTORY_PATH
     from utils.iputils import is_ip_malicious, is_ip_tor
+    from utils.requestutils import get_url, get_domain, get_subdomain, get_json_data
 except ImportError:
-    from src.BotBlocker.templatecache import TemplateCache
+    from utils.geoiputils import GeoIP, get_geoip
+    from src.BotBlocker.utils.utils import get_fields, matches_rule
     from src.BotBlocker.utils.consutils import DATASETS_DIRECTORY_PATH
-    from src.BotBlocker.baseproperties import BaseProperties
     from src.BotBlocker.utils.iputils import is_ip_malicious, is_ip_tor
+    from src.BotBlocker.utils.requestutils import get_url, get_domain, get_subdomain, get_json_data
+    from src.BotBlocker.templatecache import TemplateCache
+    from src.BotBlocker.baseproperties import BaseProperties
 
 
 DEFAULT_THIRD_PARTIES = ["ipapi", "ipintel", "hostnameresolve", "exonerator"]
@@ -107,12 +114,93 @@ class BotBlocker(BaseProperties):
 
     @property
     def settings(self) -> dict:
+        """
+        Retrieves the settings for the bot blocker.
+
+        Returns:
+            dict: A dictionary containing the merged settings, including default settings, 
+                cached settings, and any modifications based on the defined rules.
+        """
+
         base_settings = self.default_settings.copy()
 
-        cached_settings = getattr(g, "captchaify_settings", None)
+        cached_settings = getattr(g, "botblocker_settings", None)
         if isinstance(cached_settings, dict):
             base_settings.update(cached_settings)
             return base_settings
+
+        fields = []
+        for rule in self.rules:
+            fields.extend(get_fields(rule))
+
+        field_data = self.get_field_data(fields)
+        for rule, changes in self.rules:
+            if not matches_rule(rule, field_data):
+                continue
+
+            for setting_name, setting_value in changes.items():
+                base_settings[setting_name] = setting_value
+
+        g.botblocker_settings = base_settings
+        return base_settings
+
+
+    def get_field_data(self, fields: list) -> dict:
+        """
+        Collects and returns field data based on the provided fields.
+
+        Args:
+            fields (list): A list of fields for which data is to be collected.
+
+        Returns:
+            dict: A dictionary containing the collected field data, including basic request 
+                information and any additional data based on the specified fields.
+        """
+
+        url = get_url(request)
+        ip = self.client_ip
+
+        splitted_url = urlparse(url)
+        basic_information = {
+            "host": request.host, "netloc": splitted_url.netloc,
+            "hostname": splitted_url.hostname, "domain": get_domain(url),
+            "subdomain": get_subdomain(url), "path": splitted_url.path,
+            "endpoint": request.endpoint, "scheme": splitted_url.scheme,
+            "args": request.args, "is_json": request.is_json,
+            "json": get_json_data(request, {}), "url": url,
+            "ip": ip, "user_agent": request.user_agent.string
+        }
+
+        geoip = get_geoip()
+
+        for field in fields:
+            if field in basic_information:
+                continue
+
+            if field == "is_ip_malicious":
+                basic_information["is_ip_malicious"] = is_ip_malicious(
+                    self.client_ip, self.settings["third_parties"]
+                )
+                continue
+
+            if field == "is_ip_tor":
+                basic_information["is_ip_tor"] = is_ip_tor(
+                    self.client_ip, self.settings["third_parties"]
+                )
+                continue
+
+            for db_class in geoip.values():
+                db_class: GeoIP
+                if field not in db_class.fields:
+                    continue
+
+                informations = db_class.get(ip)
+                if not isinstance(informations, dict):
+                    continue
+
+                basic_information.update(informations)
+
+        return basic_information
 
 
     def get_default_replaces(self) -> dict:

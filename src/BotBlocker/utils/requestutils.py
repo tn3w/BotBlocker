@@ -71,6 +71,64 @@ def get_url(request: Request) -> str:
     return safe_url
 
 
+def get_domain(url: str) -> str:
+    """
+    Extracts the domain from a given HTTP request.
+
+    Args:
+        url (str): The URL from which to extract the domain.
+
+    Returns:
+        str: The extracted domain name from the request URL.
+    """
+
+    if not url.startswith(('http://', 'https://')):
+        url = 'http://' + url
+
+    parsed_url = urlparse(url)
+    netloc = parsed_url.netloc
+
+    if ':' in netloc:
+        netloc = netloc.split(':')[0]
+
+    domain_parts = netloc.split('.')
+    if all(part.isdigit() for part in netloc.split('.')):
+        return netloc
+
+    if len(domain_parts) > 2:
+        domain = '.'.join(domain_parts[-2:])
+    else:
+        domain = netloc
+
+    return domain
+
+
+def get_subdomain(url: str) -> Optional[str]:
+    """
+    Extracts the subdomain from a given URL.
+
+    Args:
+        url (str): The URL from which to extract the subdomain.
+
+    Returns:
+        str: The extracted subdomain, or an empty string if no subdomain exists.
+    """
+
+    parsed_url = urlparse(url)
+    netloc = parsed_url.netloc
+
+    if ':' in netloc:
+        netloc = netloc.split(':')[0]
+
+    domain_parts = netloc.split('.')
+
+    if len(domain_parts) > 2:
+        subdomain = '.'.join(domain_parts[:-2])
+        return subdomain
+
+    return None
+
+
 def is_post(request: Request) -> bool:
     """
     Determine if the given request is a POST request.

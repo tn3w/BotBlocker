@@ -130,14 +130,15 @@ def get_fields(rule: tuple) -> list:
     return fields
 
 
-def compare_numbers(field_data: Any, operator: str, value: Any) -> bool:
+def compare_numbers(field_data: Any, value: Any, morethan: bool = False) -> bool:
     """
     Compares two numbers based on the given operator.
 
     Args:
         field_data (Any): The first number (or string representation of a number).
-        operator (str): The comparison operator ('lessthan' or 'greaterthan').
         value (Any): The second number to compare against.
+        morethan (bool): If True, checks if field_data is greater than value; 
+                         if False, checks if field_data is less than value.
 
     Returns:
         bool: True if the comparison is true, False otherwise.
@@ -150,10 +151,10 @@ def compare_numbers(field_data: Any, operator: str, value: Any) -> bool:
     if not isinstance(field_data, int):
         return False
 
-    if operator == 'lessthan':
-        return field_data < value
+    if morethan:
+        return field_data > value
 
-    return field_data > value
+    return field_data < value
 
 
 def check_string_start_end(field_data: Any, value: str, startswith: bool = False) -> bool:
@@ -210,8 +211,8 @@ def evaluate_operator(field_data: Any, operator: str, value: Any) -> bool:
         ),
         (['isin', 'in'], lambda: field_data in value),
         (['isnotin', 'notisin', 'notin'], lambda: field_data not in value),
-        (['greaterthan', 'largerthan'], lambda: compare_numbers(field_data, '>', value)),
-        (['lessthan'], lambda: compare_numbers(field_data, '<', value)),
+        (['greaterthan', 'largerthan'], lambda: compare_numbers(field_data, value, True)),
+        (['lessthan'], lambda: compare_numbers(field_data, value)),
         (
             ['startswith', 'beginswith'],
             lambda: check_string_start_end(field_data, value, True)
