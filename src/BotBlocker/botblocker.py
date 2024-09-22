@@ -22,7 +22,7 @@ try:
     from utils.iputils import is_ip_malicious, is_ip_tor
     from utils.requestutils import get_url, get_domain, get_subdomain, get_json_data
 except ImportError:
-    from utils.geoiputils import GeoIP, get_geoip
+    from src.BotBlocker.utils.geoiputils import GeoIP, get_geoip
     from src.BotBlocker.utils.utils import get_fields, matches_rule
     from src.BotBlocker.utils.consutils import DATASETS_DIRECTORY_PATH
     from src.BotBlocker.utils.iputils import is_ip_malicious, is_ip_tor
@@ -166,7 +166,7 @@ class BotBlocker(BaseProperties):
             "hostname": splitted_url.hostname, "domain": get_domain(url),
             "subdomain": get_subdomain(url), "path": splitted_url.path,
             "endpoint": request.endpoint, "scheme": splitted_url.scheme,
-            "args": request.args, "is_json": request.is_json,
+            "args": dict(request.args), "is_json": request.is_json,
             "json": get_json_data(request, {}), "url": url,
             "ip": ip, "user_agent": request.user_agent.string
         }
@@ -179,13 +179,13 @@ class BotBlocker(BaseProperties):
 
             if field == "is_ip_malicious":
                 basic_information["is_ip_malicious"] = is_ip_malicious(
-                    self.client_ip, self.settings["third_parties"]
+                    self.client_ip, self.default_settings["third_parties"]
                 )
                 continue
 
             if field == "is_ip_tor":
                 basic_information["is_ip_tor"] = is_ip_tor(
-                    self.client_ip, self.settings["third_parties"]
+                    self.client_ip, self.default_settings["third_parties"]
                 )
                 continue
 

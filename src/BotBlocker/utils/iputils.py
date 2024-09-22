@@ -104,6 +104,9 @@ def is_ipv4(ip_address: str) -> bool:
         bool: True if the IP address is version 4, False otherwise.
     """
 
+    if not isinstance(ip_address, str):
+        return False
+
     return bool(COMPILED_IPV4_REGEX.match(ip_address))
 
 
@@ -117,6 +120,9 @@ def is_ipv6(ip_address: str) -> bool:
     Returns:
         bool: True if the IP address is version 6, False otherwise.
     """
+
+    if not isinstance(ip_address, str):
+        return False
 
     return bool(COMPILED_IPV6_REGEX.match(ip_address))
 
@@ -525,6 +531,9 @@ def is_ip_malicious(ip_address: str, third_parties: Optional[list] = None) -> bo
         bool: True if the IP address is malicious, False otherwise.
     """
 
+    if not isinstance(ip_address, str):
+        return False
+
     if third_parties is None:
         third_parties = ["ipapi", "ipintel", "geoip"]
 
@@ -634,6 +643,9 @@ def is_ip_tor(ip_address: str, third_parties: Optional[list] = None) -> bool:
     Returns:
         bool: True if the IP address is Tor, False otherwise.
     """
+
+    if not isinstance(ip_address, str):
+        return False
 
     if third_parties is None:
         third_parties = ["tor_hostname", "tor_exonerator"]

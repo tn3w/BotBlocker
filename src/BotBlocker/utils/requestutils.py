@@ -13,12 +13,12 @@ from urllib.parse import urlparse, urlunparse, urlencode, parse_qs, quote
 from flask import Request
 
 try:
-    from iputils import is_valid_ip
+    from iputils import is_valid_ip, is_ipv4, is_ipv6
 except ImportError:
     try:
-        from utils.iputils import is_valid_ip
+        from utils.iputils import is_valid_ip, is_ipv4, is_ipv6
     except ImportError:
-        from src.BotBlocker.utils.iputils import is_valid_ip
+        from src.BotBlocker.utils.iputils import is_valid_ip, is_ipv4, is_ipv6
 
 
 def get_json_data(request: Request, default: Any = None) -> Any:
@@ -116,6 +116,9 @@ def get_subdomain(url: str) -> Optional[str]:
 
     parsed_url = urlparse(url)
     netloc = parsed_url.netloc
+
+    if is_ipv4(parsed_url.hostname) or is_ipv6(parsed_url.hostname):
+        return None
 
     if ':' in netloc:
         netloc = netloc.split(':')[0]
