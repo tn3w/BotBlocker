@@ -219,8 +219,8 @@ class CityGeoIP(GeoIP):
     def fields(self) -> list:
         return [
             "city_name", "city_names", "city_locales", "city_confidence",
-            "city_geoname_id", "postal_code", "postal_confidence", "county_name",
-            "county_names", "country_locales", "country_is_in_eu", "country_confidence",
+            "city_geoname_id", "postal_code", "postal_confidence", "country_name",
+            "country_names", "country_locales", "country_is_in_eu", "country_confidence",
             "country_iso_code", "country_geoname_id", "registered_country_name",
             "registered_country_names", "registered_country_locales",
             "registered_country_is_in_eu", "registered_country_confidence",
@@ -268,8 +268,8 @@ class CityGeoIP(GeoIP):
                 "postal_confidence": city_location.postal.confidence,
 
                 # Country
-                "county_name": city_location.country.name,
-                "county_names": city_location.country.names,
+                "country_name": city_location.country.name,
+                "country_names": city_location.country.names,
                 "country_locales": city_location.country._locales,
                 "country_is_in_eu": city_location.country.is_in_european_union,
                 "country_confidence": city_location.country.confidence,

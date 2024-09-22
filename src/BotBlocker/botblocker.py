@@ -134,7 +134,7 @@ class BotBlocker(BaseProperties):
             fields.extend(get_fields(rule))
 
         field_data = self.get_field_data(fields)
-        for rule, changes in self.rules:
+        for rule, changes in self.rules.items():
             if not matches_rule(rule, field_data):
                 continue
 
@@ -241,15 +241,35 @@ class BotBlocker(BaseProperties):
 
 
     def check_client(self) -> Optional[str]:
+        settings = self.settings
+
+        if settings["action"] == "allow":
+            return
+
+        if settings["action"] == "block":
+            return self.access_denied()
+
+        if settings["action"] == "fight":
+            return self.captcha()
+
         client_ip = self.client_ip
 
         if client_ip is None:
-            return self.access_denied()
+            if settings["action"] == "block_if_suspicious":
+                return self.access_denied()
+
+            return self.captcha()
 
         if is_ip_malicious(client_ip):
+            if settings["action"] == "block_if_suspicious":
+                return self.access_denied()
+
             return self.captcha()
 
         if is_ip_tor(client_ip):
+            if settings["action"] == "block_if_suspicious":
+                return self.access_denied()
+
             return self.captcha()
 
-        return None
+        return
