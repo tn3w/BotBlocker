@@ -8,6 +8,7 @@ Author:   tn3w (mail@tn3w.dev)
 License:  Apache-2.0 license
 """
 
+import re
 import os
 
 try:
@@ -104,9 +105,9 @@ class TemplateCache:
 
         for key, value in sorted_kwargs.items():
             key = key.upper()
-
             template = template.replace("{" + key + "}", value)
 
+        template = re.sub(r'\s+', ' ', template).strip()
         return template
 
 

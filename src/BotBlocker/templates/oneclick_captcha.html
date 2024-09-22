@@ -40,6 +40,11 @@
                 box-shadow: 2px 2px 5px var(--text-color);
             }
 
+            .i {
+                margin-top: 25px;
+                font-size: 0.35rem;
+            }
+
             @media only screen and (max-width: 670px) {
                 .ig {
                     grid-template-columns: repeat(3, 1fr);
@@ -56,7 +61,8 @@
     <body>
         <main>
             <img src="{ORIGINAL_IMAGE}" alt="Original Image" class="oi">
-            <p class="c">{CAPTION}</p>{ERROR}
+            <p class="c">{CAPTION}</p>
+            {ERROR}
             <div class="ig">
                 <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=1"><img src="{IMAGE1}" class="gi" alt="Image 1"></a>
                 <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=2"><img src="{IMAGE2}" class="gi" alt="Image 2"></a>
@@ -65,6 +71,7 @@
                 <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=5"><img src="{IMAGE5}" class="gi" alt="Image 5"></a>
                 <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=6"><img src="{IMAGE6}" class="gi" alt="Image 6"></a>
             </div>
+            <p class="i">Error code: 403 — URL: {DOMAIN}{PATH} — Ray ID: {RAY_ID}{CLIENT_IP} — User agent: {CLIENT_USER_AGENT} — Timestamp: {TIMESTAMP}</p>
         </main>
     </body>
 </html>

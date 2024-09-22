@@ -3,7 +3,7 @@ from src.BotBlocker.botblocker import BotBlocker
 
 app = Flask(__name__)
 
-bot_blocker = BotBlocker(app, rules = {("path", "contains", "/"): {"action": "allow"}})
+bot_blocker = BotBlocker(app)
 
 @app.route("/")
 def index():

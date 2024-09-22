@@ -222,7 +222,7 @@ class BotBlocker(BaseProperties):
         }
 
 
-    def access_denied(self) -> Tuple[str, int]:
+    def access_denied(self, without_rerouting: bool = False) -> Tuple[str, int]:
         """
         Render the access denied page.
 
@@ -237,8 +237,13 @@ class BotBlocker(BaseProperties):
 
 
     def captcha(self) -> str:
-        return "Here should be an Captcha!"
 
+        replaces = self.get_default_replaces()
+        replaces.update({
+            "ERROR": ""
+        })
+
+        return self.template_cache.render("oneclick_captcha.html", **replaces)
 
     def check_client(self) -> Optional[str]:
         settings = self.settings
