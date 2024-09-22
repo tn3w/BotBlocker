@@ -52,7 +52,7 @@ def find_geoip_database_path(database_name: str) -> Optional[str]:
         if not timestamp.isdigit():
             continue
 
-        full_path = os.path.join(DATA_DIRECTORY_PATH, database_name)
+        full_path = os.path.join(DATA_DIRECTORY_PATH, file)
 
         if int(time.time()) - int(timestamp) > 604800:
             os.remove(full_path)
@@ -249,7 +249,7 @@ class CityGeoIP(GeoIP):
 
         default = {key: None for key in self.fields}
 
-        if not self.is_available:
+        if not self.is_available or not isinstance(ip_address, str):
             return default
 
         try:
@@ -355,7 +355,7 @@ class ASNGeoIP(GeoIP):
         default = {"asn": None, "asorg": None}
         default.update({key: False for key in keys})
 
-        if not self.is_available:
+        if not self.is_available or not isinstance(ip_address, str):
             return default
 
         try:
@@ -416,14 +416,14 @@ class AnonymousGeoIP(GeoIP):
             ip_address (str): The IP address to look up.
 
         Returns:
-            dict: A dictionary containing anonymity-related information,
+            dict: A dictionary containfing anonymity-related information,
             including flags for anonymity, VPN usage, hosting provider status,
             public proxy status, residential proxy status, and Tor exit node status.
         """
 
         default = {key: False for key in self.fields}
 
-        if not self.is_available:
+        if not self.is_available or not isinstance(ip_address, str):
             return default
 
         try:

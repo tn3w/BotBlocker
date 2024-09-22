@@ -484,7 +484,7 @@ def is_ip_malicious_ipintel(ip_address: str, _: Optional[str] = None) -> Optiona
 
 
 @cache_with_ttl(28800)
-def is_ip_malicious_geoip(ip_address: str, _: Optional[str] = None) -> bool:
+def is_ip_malicious_geoip(ip_address: str) -> bool:
     """
     Checks the reputation of the given IP address using GeoIP databases.<
 
@@ -541,7 +541,6 @@ def is_ip_malicious(ip_address: str, third_parties: Optional[list] = None) -> bo
         "ipinfo": is_ip_malicious_ipinfo,
         "ipapi": is_ip_malicious_ipapi,
         "ipintel": is_ip_malicious_ipintel,
-        "geoip": is_ip_malicious_geoip,
     }.items():
 
         is_allowed = False
@@ -559,8 +558,12 @@ def is_ip_malicious(ip_address: str, third_parties: Optional[list] = None) -> bo
                 api_key = found_api_key
 
         is_malicious = third_party_function(ip_address, api_key)
-        if is_malicious is not None:
+        if is_malicious is True:
             return is_malicious
+
+    if "geoip" in third_parties:
+        if is_ip_malicious_geoip(ip_address):
+            return True
 
     return False
 
