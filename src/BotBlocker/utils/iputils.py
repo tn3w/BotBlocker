@@ -301,19 +301,117 @@ def reverse_ip(ip_address: str) -> str:
     return symbol.join(reversed(ip_address.split(symbol)))
 
 
+MALICIOUS_ASNS: Final[str] = [
+    "Fastly", "Incapsula", "Akamai", "AkamaiGslb", "Google", "Datacamp Limited",
+    "Bing", "Censys", "Hetzner", "Linode", "Amazon", "AWS", "DigitalOcean", "Vultr",
+    "Azure", "Alibaba", "Netlify", "IBM", "Oracle", "Scaleway", "Cloud", "VPN"
+]
+
+
+def is_asn_malicious(asn: str) -> bool:
+    """
+    Determines if a given Autonomous System Number (ASN) is considered malicious.
+
+    Args:
+        asn (str): The Autonomous System Number to check.
+
+    Returns:
+        bool: True if the ASN is not malicious, False if it is malicious.
+    """
+
+    normalized_asn = asn.lower().strip()
+
+    for malicious_asn in MALICIOUS_ASNS:
+        if malicious_asn.lower() not in normalized_asn:
+            return True
+
+    return False
+
+
 @cache_with_ttl(28800)
-def is_ip_malicious_ipapi(ip_address: str) -> Optional[bool]:
+def is_ip_malicious_ipinfo(ip_address: str, api_key: Optional[str] = None) -> Optional[bool]:
+    """
+    Checks if a given IP address is malicious using the IPinfo.io API.
+
+    Args:
+        ip_address (str): The IP address to check.
+        api_key (Optional[str]): The API key for authenticating with the IPinfo.io API.
+
+    Returns:
+        Optional[bool]: True if the IP address is malicious, False if it is not, or None
+                        if the API key is not provided or an error occurs.
+    """
+
+    if api_key is None:
+        return None
+
+    url = f"https://ipinfo.io/{ip_address}?token=" + api_key
+    try:
+        with urllib.request.urlopen(url, timeout = 2) as response:
+            if response.getcode() != 200:
+                return None
+
+            data = response.read().decode("utf-8")
+            data = json.loads(data)
+
+            some_data_provided = False
+
+            for key in ["org", "asn", "privacy"]:
+                value = data.get(key, None)
+                if value is None:
+                    continue
+
+                some_data_provided = True
+
+                if key == "org":
+                    if is_asn_malicious(key):
+                        return True
+
+                    continue
+
+                if key == "asn":
+                    if is_asn_malicious(value.get("name", "")):
+                        return True
+
+                    continue
+
+                if key == "privacy":
+                    for privacy_key in ["vpn", "proxy", "tor", "relay", "hosting"]:
+                        privacy_value = value.get(privacy_key, None)
+                        if privacy_value is True:
+                            return True
+
+            if not some_data_provided:
+                return None
+
+    except (urllib.error.HTTPError, urllib.error.URLError,
+            TimeoutError, json.JSONDecodeError):
+        return None
+
+    return False
+
+
+
+@cache_with_ttl(28800)
+def is_ip_malicious_ipapi(ip_address: str, api_key: Optional[str] = None) -> Optional[bool]:
     """
     Uses the IPApi.com API to check the reputation of the given IP address.
 
     Args:
         ip_address (str): The IP address to check.
+        api_key (Optional[str]): The API key for authenticating with the IPApi.com API.
+                                 If provided, it will be included in the request.
 
     Returns:
-        Optional[bool]: True if the IP address is malicious, False otherwise.
+        Optional[bool]: True if the IP address is malicious, False if it is not, or None
+                        if an error occurs.
     """
 
     url = f"http://ip-api.com/json/{ip_address}?fields=proxy,hosting"
+
+    if api_key is not None:
+        url += "&api_key=" + api_key
+        url = url.replace("http", "https")
 
     try:
         with urllib.request.urlopen(url, timeout = 2) as response:
@@ -335,16 +433,17 @@ def is_ip_malicious_ipapi(ip_address: str) -> Optional[bool]:
             if not some_data_provided:
                 return None
 
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+    except (urllib.error.HTTPError, urllib.error.URLError,
+            TimeoutError, json.JSONDecodeError):
         return None
 
     return False
 
 
 @cache_with_ttl(28800)
-def is_ip_malicious_ipintel(ip_address: str) -> Optional[bool]:
+def is_ip_malicious_ipintel(ip_address: str, _: Optional[str] = None) -> Optional[bool]:
     """
-    Uses the IPIntel.net API to check the reputation of the given IP address.
+    Uses the getipintel.net API to check the reputation of the given IP address.
 
     Args:
         ip_address (str): The IP address to check.
@@ -378,15 +477,8 @@ def is_ip_malicious_ipintel(ip_address: str) -> Optional[bool]:
     return False
 
 
-MALICIOUS_ASNS: Final[str] = [
-    "Fastly", "Incapsula", "Akamai", "AkamaiGslb", "Google", "Datacamp Limited",
-    "Bing", "Censys", "Hetzner", "Linode", "Amazon", "AWS", "DigitalOcean", "Vultr",
-    "Azure", "Alibaba", "Netlify", "IBM", "Oracle", "Scaleway", "Cloud", "VPN"
-]
-
-
 @cache_with_ttl(28800)
-def is_ip_malicious_geoip(ip_address: str) -> bool:
+def is_ip_malicious_geoip(ip_address: str, _: Optional[str] = None) -> bool:
     """
     Checks the reputation of the given IP address using GeoIP databases.<
 
@@ -398,24 +490,26 @@ def is_ip_malicious_geoip(ip_address: str) -> bool:
     """
 
     geoip = get_geoip()
+
+    some_database_available = False
     for db_name in ["asn", "anonymous"]:
         database: Optional[GeoIP] = geoip.get(db_name, None)
         if database is None:
             continue
 
+        some_database_available = True
+
         ip_address_info = database.get(ip_address)
         if db_name == "asn":
-            normalized_ip_address_info = ip_address_info.get("asorg", "").lower()
-            for malicious_as in MALICIOUS_ASNS:
-                if malicious_as.lower() in normalized_ip_address_info:
-                    return True
-
-            if ip_address_info.get("network_is_global") is False:
+            if is_asn_malicious(ip_address_info.get("asorg", "")):
                 return True
 
-        if db_name == "is_anonymous":
+        if db_name == "anonymous":
             if any(key for key in ip_address_info):
                 return True
+
+    if not some_database_available:
+        return None
 
     return False
 
@@ -434,20 +528,30 @@ def is_ip_malicious(ip_address: str, third_parties: Optional[list] = None) -> bo
     if third_parties is None:
         third_parties = ["ipapi", "ipintel", "geoip"]
 
-    if "ipapi" in third_parties:
-        ip_malicious_ipapi = is_ip_malicious_ipapi(ip_address)
-        if ip_malicious_ipapi is not None:
-            return ip_malicious_ipapi
+    for third_party, third_party_function in {
+        "ipinfo": is_ip_malicious_ipinfo,
+        "ipapi": is_ip_malicious_ipapi,
+        "ipintel": is_ip_malicious_ipintel,
+        "geoip": is_ip_malicious_geoip,
+    }:
 
-    if "ipintel" in third_parties:
-        ip_malicious_ipintel = is_ip_malicious_ipintel(ip_address)
-        if ip_malicious_ipintel is not None:
-            return ip_malicious_ipintel
+        is_allowed = False
+        for allowed_third_party in third_parties:
+            if allowed_third_party.lower().startswith(third_party):
+                is_allowed = True
 
-    if "geoip" in third_parties:
-        ip_malicious_geoip = is_ip_malicious_geoip(ip_address)
-        if ip_malicious_geoip is True:
-            return ip_malicious_geoip
+        if not is_allowed:
+            continue
+
+        api_key = None
+        if ":" in third_party:
+            found_api_key = third_party.split(":")[1].strip()
+            if len(found_api_key) > 1:
+                api_key = found_api_key
+
+        is_malicious = third_party_function(ip_address, api_key)
+        if is_malicious is not None:
+            return is_malicious
 
     return False
 
