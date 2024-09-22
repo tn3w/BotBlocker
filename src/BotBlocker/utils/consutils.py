@@ -1,5 +1,6 @@
 """
 --- Constants ---
+
 This file contains the constants used in the application.
 
 Author:   tn3w (mail@tn3w.dev)

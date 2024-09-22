@@ -1,5 +1,6 @@
 """
 --- Template Cache ---
+
 A class for caching and minimizing HTML templates. This class provides
 a method to retrieve the cached templates for use in rendering. The
 cache is automatically loaded when the class is initialized.
@@ -108,6 +109,8 @@ class TemplateCache:
             template = template.replace("{" + key + "}", value)
 
         template = re.sub(r'\s+', ' ', template).strip()
+        template = re.sub(r'\s*\{\s*', '{', template)
+        template = re.sub(r'\s*\}\s*', '}', template)
         return template
 
 

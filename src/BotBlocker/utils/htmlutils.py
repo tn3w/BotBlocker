@@ -1,5 +1,6 @@
 """
 --- HTML Utilities ---
+
 This module includes utilities for HTML manipulation. It provides methods
 for removing unnecessary whitespace, comments, and newlines, while also
 minimizing embedded <style> and <script> tags. Additionally, it provides

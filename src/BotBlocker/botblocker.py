@@ -1,5 +1,6 @@
 """
 --- Bot Blocker Module ---
+
 This module provides functionalities to block bots from accessing
 the website, including methods for client verification, access 
 denial handling, and template rendering.
@@ -237,13 +238,7 @@ class BotBlocker(BaseProperties):
 
 
     def captcha(self) -> str:
-
-        replaces = self.get_default_replaces()
-        replaces.update({
-            "ERROR": ""
-        })
-
-        return self.template_cache.render("oneclick_captcha.html", **replaces)
+        return self.template_cache.render("oneclick_captcha.html", **self.get_default_replaces())
 
     def check_client(self) -> Optional[str]:
         settings = self.settings

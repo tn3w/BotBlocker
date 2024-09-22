@@ -1,5 +1,6 @@
 """
---- Request Utilities ---
+--- Request Utils ---
+
 This module implements utilities for handling requests. It provides methods
 for retrieving data from requests, determining if a request is a POST request,
 and getting the IP address from a request.

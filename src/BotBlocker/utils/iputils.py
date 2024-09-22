@@ -1,5 +1,6 @@
 """
---- IP Utility ---
+--- IP Utils ---
+
 This module provides utility functions for handling IP addresses. It
 provides methods for checking if an IP address is in a list of unwanted
 IP ranges, and for reversing an IP address for DNS lookup.

@@ -1,5 +1,6 @@
 """
---- BotBlocker Utilities ---
+--- BotBlocker Utils ---
+
 This module includes utilities for the BotBlocker project.
 
 Author:   tn3w (mail@tn3w.dev)

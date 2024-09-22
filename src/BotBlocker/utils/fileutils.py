@@ -1,5 +1,6 @@
 """
 --- File Tools ---
+
 This module includes functionalities to read from and
 write to files, methods to check file access permissions.
 
