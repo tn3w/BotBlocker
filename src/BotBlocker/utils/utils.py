@@ -9,20 +9,29 @@ License:  Apache-2.0 license
 
 import time
 import functools
-from typing import Any
+from typing import Tuple, Any
 from traceback import format_exc
 
 
-def handle_exception(exception: Exception) -> None:
+def handle_exception(exception: Tuple[Exception, str], *args) -> None:
     """
-    Handles an exception.
+    Handles an exception by printing the exception message and traceback.
 
     Args:
-        exception (Exception): The exception to handle.
+        exception (Tuple[Exception, str]): A tuple containing the exception to
+            handle and an optional message.
+        *args: Additional arguments to be printed alongside the exception message and traceback.
+
+    Returns:
+        None: This function does not return a value; it only prints the exception details.
     """
 
+    if isinstance(exception, str):
+        print(exception, *args)
+        return
+
     traceback = format_exc()
-    print(exception, traceback)
+    print(exception, traceback, *args)
 
 
 def cache_with_ttl(ttl: int) -> callable:

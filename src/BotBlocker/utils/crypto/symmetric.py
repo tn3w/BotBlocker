@@ -22,15 +22,19 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 try:
-    from src.BotBlocker.crypto.serialization import load_serialization, Base85
-    from src.BotBlocker.crypto.interfaces import SymmetricEncryption, Serialization
+    from src.BotBlocker.utils.crypto.serialization import load_serialization, Base85
+    from src.BotBlocker.utils.crypto.interfaces import SymmetricEncryption, Serialization
 except ImportError:
     try:
-        from crypto.serialization import load_serialization, Base85
-        from crypto.interfaces import SymmetricEncryption, Serialization
+        from utils.crypto.serialization import load_serialization, Base85
+        from utils.crypto.interfaces import SymmetricEncryption, Serialization
     except ImportError:
-        from serialization import load_serialization, Base85
-        from interfaces import SymmetricEncryption, Serialization
+        try:
+            from crypto.serialization import load_serialization, Base85
+            from crypto.interfaces import SymmetricEncryption, Serialization
+        except ImportError:
+            from serialization import load_serialization, Base85
+            from interfaces import SymmetricEncryption, Serialization
 
 
 def generate_unique_key(serialization: Union[Callable, str] = "base85") -> str:

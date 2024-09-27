@@ -19,6 +19,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
+
 def split_into_chunks(data: bytes, length: int) -> list[bytes]:
     """
     Split the input data into chunks of a specified length.
@@ -45,6 +46,7 @@ class Serialization:
     An interface for serialization and deserialization of data.
     """
 
+
     @staticmethod
     def encode(plain: bytes) -> str:
         """
@@ -58,6 +60,7 @@ class Serialization:
         """
 
         return plain.decode("utf-8")
+
 
     @staticmethod
     def decode(serialized: str) -> bytes:
@@ -79,8 +82,8 @@ class Hashing:
     A class to perform hashing operations with optional salting and serialization.
     """
 
-    def __init__(self, iterations: int = 100000, hash_length: int = 16,
-                 salt_length: int = 16,
+
+    def __init__(self, iterations: int = 100000, hash_length: int = 16, salt_length: int = 16,
                  serialization: Union[str, Callable] = "bytes") -> None:
         """
         Initializes the Hashing class with specified parameters.
@@ -94,10 +97,11 @@ class Hashing:
                 Defaults to "bytes".
         """
 
+        self.iterations = iterations
         self.hash_length = hash_length
         self.salt_length = salt_length
-        self.iterations = iterations
         self.serialization = serialization
+
 
     def _hash(self, plain_value: bytes, salt: bytes) -> bytes:
         """
@@ -113,6 +117,7 @@ class Hashing:
 
         return plain_value + salt
 
+
     def _serialize(self, data: bytes) -> Union[str, bytes]:
         """
         Serializes the given byte data into a string format.
@@ -125,6 +130,7 @@ class Hashing:
         """
 
         return data
+
 
     def _deserialize(self, data: Union[str, bytes]) -> bytes:
         """
@@ -142,6 +148,7 @@ class Hashing:
             return data
 
         return data.encode("utf-8")
+
 
     def hash(self, plain_value: Union[str, bytes], salt: Optional[Union[str, bytes]] = None,
              return_salt: bool = False) -> Optional[
@@ -182,6 +189,7 @@ class Hashing:
             return serialized_hash, use_salt
 
         return serialized_hash
+
 
     def compare(self, plain_value: Union[str, bytes],
                 hashed_value: Union[str, bytes], salt: Optional[Union[str, bytes]] = None) -> bool:

@@ -17,6 +17,7 @@ from flask import Flask, request, g
 try:
     from templatecache import TemplateCache
     from baseproperties import BaseProperties
+    from utils.beamutils import get_beam_id
     from utils.geoiputils import GeoIP, get_geoip
     from utils.utils import get_fields, matches_rule
     from utils.consutils import DATASETS_DIRECTORY_PATH
@@ -25,6 +26,7 @@ try:
         get_url, get_domain, get_subdomain, get_json_data, is_user_agent_malicious
     )
 except ImportError:
+    from src.BotBlocker.utils.beamutils import get_beam_id
     from src.BotBlocker.utils.geoiputils import GeoIP, get_geoip
     from src.BotBlocker.utils.utils import get_fields, matches_rule
     from src.BotBlocker.utils.consutils import DATASETS_DIRECTORY_PATH
@@ -221,12 +223,15 @@ class BotBlocker(BaseProperties):
             dict: A dictionary containing the default replacements.
         """
 
+        client_ip = self.client_ip if self.client_ip is not None else ""
+        beam_id = get_beam_id([client_ip, request.user_agent.string])
+
         return {
             "domain": request.host,
             "path": request.path,
-            "ray_id": "1111111",
+            "beam_id": beam_id,
             "client_country": "US",
-            "client_ip": " — IP: " + self.client_ip if self.client_ip is not None else "",
+            "client_ip": " — IP: " + client_ip,
             "client_user_agent": request.user_agent.string,
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S") + " UTC",
         }
@@ -300,21 +305,17 @@ class BotBlocker(BaseProperties):
             return self.captcha()
 
         if is_user_agent_malicious(request, settings["enable_crawler_block"]):
-            print("crawler")
             return self.get_suspicious_response()
 
         client_ip = self.client_ip
 
         if client_ip is None:
-            print("clientip none")
             return self.get_suspicious_response()
 
         if is_ip_malicious(client_ip):
-            print("clientip mal")
             return self.get_suspicious_response()
 
         if is_ip_tor(client_ip):
-            print("clientip tor")
             return self.get_suspicious_response()
 
         return

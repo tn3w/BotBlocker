@@ -20,15 +20,19 @@ from cryptography.hazmat.primitives.hashes import MD5 as md5
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 try:
-    from src.BotBlocker.crypto.serialization import load_serialization
-    from src.BotBlocker.crypto.interfaces import Serialization, Hashing
+    from src.BotBlocker.utils.crypto.serialization import load_serialization
+    from src.BotBlocker.utils.crypto.interfaces import Serialization, Hashing
 except ImportError:
     try:
-        from crypto.serialization import load_serialization
-        from crypto.interfaces import Serialization, Hashing
+        from utils.crypto.serialization import load_serialization
+        from utils.crypto.interfaces import Serialization, Hashing
     except ImportError:
-        from serialization import load_serialization
-        from interfaces import Serialization, Hashing
+        try:
+            from crypto.serialization import load_serialization
+            from crypto.interfaces import Serialization, Hashing
+        except ImportError:
+            from serialization import load_serialization
+            from interfaces import Serialization, Hashing
 
 
 class SerializedHashing(Hashing):

@@ -20,14 +20,14 @@ from typing import Final, Optional
 from datetime import datetime, timedelta
 
 try:
-    from src.BotBlocker.utils.utils import cache_with_ttl
+    from src.BotBlocker.utils.utils import cache_with_ttl, handle_exception
     from src.BotBlocker.utils.geoiputils import GeoIP, get_geoip
 except ImportError:
     try:
-        from utils.utils import cache_with_ttl
+        from utils.utils import cache_with_ttl, handle_exception
         from utils.geoiputils import GeoIP, get_geoip
     except ImportError:
-        from utils import cache_with_ttl
+        from utils import cache_with_ttl, handle_exception
         from utils.geoiputils import GeoIP, get_geoip
 
 
@@ -558,10 +558,12 @@ def is_ip_malicious(ip_address: str, third_parties: Optional[list] = None) -> bo
 
         is_malicious = third_party_function(ip_address, api_key)
         if is_malicious is True:
+            handle_exception(ip_address, "is malicious based on", third_party)
             return is_malicious
 
     if "geoip" in third_parties:
         if is_ip_malicious_geoip(ip_address):
+            handle_exception(ip_address, "is malicious based on geoip")
             return True
 
     return False
@@ -653,12 +655,14 @@ def is_ip_tor(ip_address: str, third_parties: Optional[list] = None) -> bool:
         third_parties = ["tor_hostname", "tor_exonerator"]
 
     if "tor_hostname" in third_parties and is_ipv4(ip_address):
-        return is_ipv4_tor(ip_address)
+        if is_ipv4_tor(ip_address):
+            handle_exception(ip_address, "is tor based on hostname lookup")
+            return True
 
-    if (is_ipv6(ip_address) or "tor_hostname" not in third_parties)\
-        and "tor_exonerator" in third_parties:
-
-        return is_ip_tor_exonerator(ip_address)
+    if "tor_exonerator" in third_parties:
+        if is_ip_tor_exonerator(ip_address):
+            handle_exception(ip_address, "is tor based on tor exonerator")
+            return True
 
     return False
 

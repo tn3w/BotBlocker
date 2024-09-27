@@ -1599,8 +1599,6 @@ def is_user_agent_crawler(user_agent: str) -> bool:
         if re.match(pattern, user_agent) or\
             pattern.lower().strip() in user_agent.lower():
 
-            print(pattern, "matches", user_agent)
-
             return True
 
     return False

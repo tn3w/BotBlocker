@@ -26,12 +26,15 @@ from urllib.parse import quote, unquote
 from typing import Optional, Final, Callable
 
 try:
-    from src.BotBlocker.crypto.interfaces import Serialization
+    from src.BotBlocker.utils.crypto.interfaces import Serialization
 except ImportError:
     try:
-        from crypto.interfaces import Serialization
+        from utils.crypto.interfaces import Serialization
     except ImportError:
-        from interfaces import Serialization
+        try:
+            from crypto.interfaces import Serialization
+        except ImportError:
+            from interfaces import Serialization
 
 
 class Hex(Serialization):
@@ -168,6 +171,45 @@ class Base64UrlSafe(Serialization):
         return urlsafe_b64decode(serialized)
 
 
+class Base62(Serialization):
+    """
+    A class for encoding and decoding data using Base62 encoding.
+    """
+
+
+    BASE62_CHARACTERS: Final[str] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+
+    @staticmethod
+    def encode(plain: bytes) -> str:
+        base = len(Base62.BASE62_CHARACTERS)
+        number = int.from_bytes(plain, byteorder='big')
+        encoded = []
+
+        while number > 0:
+            number, remains = divmod(number, base)
+            encoded.append(Base62.BASE62_CHARACTERS[remains])
+
+        return ''.join(reversed(encoded))
+
+
+    @staticmethod
+    def decode(serialized: str) -> bytes:
+        base = len(Base62.BASE62_CHARACTERS)
+
+        char_to_value = {char: index for index, char in enumerate(Base62.BASE62_CHARACTERS)}
+
+        num = 0
+        for char in serialized:
+            if char not in char_to_value:
+                raise ValueError(f"Invalid character '{char}' in input.")
+
+            num = num * base + char_to_value[char]
+
+        byte_length = (num.bit_length() + 7) // 8 or 1
+        return num.to_bytes(byte_length, byteorder='big')
+
+
 class Base32(Serialization):
     """
     A class for encoding and decoding data using Base32.
@@ -217,15 +259,11 @@ class Base16(Serialization):
 
 
 SERIALIZATION_TYPES: Final[dict[str, Callable]] = {
-    "hex": Hex, "utf8": UTF8,
-    "base85": Base85,
-    "base85urlsafe": Base85Urlsafe,
-    "urlsafebase85": Base85Urlsafe,
-    "base64": Base64,
-    "base64standard": Base64Standard,
-    "standardbase64": Base64Standard,
-    "base64urlsafe": Base64UrlSafe,
-    "urlsafebase64": Base64UrlSafe,
+    "hex": Hex, "utf8": UTF8, "base85": Base85,
+    "base85urlsafe": Base85Urlsafe, "urlsafebase85": Base85Urlsafe,
+    "base64": Base64, "base64standard": Base64Standard,
+    "standardbase64": Base64Standard, "base64urlsafe": Base64UrlSafe,
+    "urlsafebase64": Base64UrlSafe, "base62": Base62,
     "base32": Base32, "base32hex": Base32Hex,
     "hexbase32": Base32Hex, "base16": Base16
 }
