@@ -10,8 +10,6 @@ License:  Apache-2.0 license
 """
 
 import re
-from re import Pattern
-
 import json
 import random
 import socket
@@ -90,8 +88,8 @@ IPV6_PATTERN: Final[str] = (
 )
 
 
-COMPILED_IPV4_REGEX: Final[Pattern[str]] = re.compile(IPV4_PATTERN)
-COMPILED_IPV6_REGEX: Final[Pattern[str]] = re.compile(IPV6_PATTERN)
+COMPILED_IPV4_REGEX: Final[re.Pattern] = re.compile(IPV4_PATTERN)
+COMPILED_IPV6_REGEX: Final[re.Pattern] = re.compile(IPV6_PATTERN)
 
 
 def is_ipv4(ip_address: str) -> bool:
@@ -329,7 +327,7 @@ def is_asn_malicious(asn: str) -> bool:
     normalized_asn = asn.lower().strip()
 
     for malicious_asn in MALICIOUS_ASNS:
-        if malicious_asn.lower() not in normalized_asn:
+        if malicious_asn.lower() in normalized_asn:
             return True
 
     return False
@@ -487,7 +485,7 @@ def is_ip_malicious_ipintel(ip_address: str, _: Optional[str] = None) -> Optiona
 @cache_with_ttl(28800)
 def is_ip_malicious_geoip(ip_address: str) -> bool:
     """
-    Checks the reputation of the given IP address using GeoIP databases.<
+    Checks the reputation of the given IP address using GeoIP databases.
 
     Args:
         ip_address (str): The IP address to check.
@@ -512,7 +510,7 @@ def is_ip_malicious_geoip(ip_address: str) -> bool:
                 return True
 
         if db_name == "anonymous":
-            if any(key for key in ip_address_info):
+            if any(value for value in ip_address_info.values()):
                 return True
 
     if not some_database_available:

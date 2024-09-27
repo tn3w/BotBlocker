@@ -1,5 +1,4 @@
 import re
-from re import Pattern
 from typing import Final
 
 CRAWLER_PATTERNS: Final[tuple] = (
@@ -1579,18 +1578,29 @@ CRAWLER_PATTERNS: Final[tuple] = (
     r"ZyBorg",
     r"Puppeteer"
     r"Playwright",
-    r"Scrapy"
-    r"[a-z0-9\-_]*(bot|crawl|archiver|transcoder|spider|uptime|validator|fetcher|cron|checker|reader|extractor|monitoring|analyzer|scraper)",
+    r"Scrapy",
+    (r"[a-z0-9\-_]*(bot|crawl|archiver|transcoder|spider|uptime|validator"
+     r"|fetcher|cron|checker|reader|extractor|monitoring|analyzer|scraper)"),
 )
 
-COMPILED_CRAWLER_REGEX: Final[Pattern[str]] = re.compile(CRAWLER_PATTERNS)
 
 def is_user_agent_crawler(user_agent: str) -> bool:
-    if re.match(COMPILED_CRAWLER_REGEX, user_agent):
-        return True
+    """
+    Determine if the given user agent string belongs to a web crawler.
 
-    for crawler in CRAWLER_PATTERNS:
-        if crawler.lower().strip() in user_agent.lower():
+    Args:
+        user_agent (str): The user agent string to be checked.
+
+    Returns:
+        bool: True if the user agent is a crawler, False otherwise.
+    """
+
+    for pattern in CRAWLER_PATTERNS:
+        if re.match(pattern, user_agent) or\
+            pattern.lower().strip() in user_agent.lower():
+
+            print(pattern, "matches", user_agent)
+
             return True
 
     return False

@@ -21,18 +21,22 @@ try:
     from utils.utils import get_fields, matches_rule
     from utils.consutils import DATASETS_DIRECTORY_PATH
     from utils.iputils import is_ip_malicious, is_ip_tor
-    from utils.requestutils import get_url, get_domain, get_subdomain, get_json_data
+    from utils.requestutils import (
+        get_url, get_domain, get_subdomain, get_json_data, is_user_agent_malicious
+    )
 except ImportError:
     from src.BotBlocker.utils.geoiputils import GeoIP, get_geoip
     from src.BotBlocker.utils.utils import get_fields, matches_rule
     from src.BotBlocker.utils.consutils import DATASETS_DIRECTORY_PATH
     from src.BotBlocker.utils.iputils import is_ip_malicious, is_ip_tor
-    from src.BotBlocker.utils.requestutils import get_url, get_domain, get_subdomain, get_json_data
+    from src.BotBlocker.utils.requestutils import (
+        get_url, get_domain, get_subdomain, get_json_data, is_user_agent_malicious
+    )
     from src.BotBlocker.templatecache import TemplateCache
     from src.BotBlocker.baseproperties import BaseProperties
 
 
-DEFAULT_THIRD_PARTIES = ["ipapi", "ipintel", "hostnameresolve", "exonerator"]
+DEFAULT_THIRD_PARTIES = ["ipapi", "ipintel", "hostnameresolve", "exonerator", "geoip"]
 DEFAULT_SETTINGS: Final[Dict[str, Union[str, int, bool]]] = {
     # Action and Configuration
     "action": "auto", "captcha_type": "oneclick", "hardness": 1, "verification_age": 3600,
@@ -172,34 +176,39 @@ class BotBlocker(BaseProperties):
             "ip": ip, "user_agent": request.user_agent.string
         }
 
-        geoip = get_geoip()
+        third_parties = self.default_settings["third_parties"]
 
+        geoip = None
         for field in fields:
             if field in basic_information:
                 continue
 
             if field == "is_ip_malicious":
                 basic_information["is_ip_malicious"] = is_ip_malicious(
-                    self.client_ip, self.default_settings["third_parties"]
+                    self.client_ip, third_parties
                 )
                 continue
 
             if field == "is_ip_tor":
                 basic_information["is_ip_tor"] = is_ip_tor(
-                    self.client_ip, self.default_settings["third_parties"]
+                    self.client_ip, third_parties
                 )
                 continue
 
-            for db_class in geoip.values():
-                db_class: GeoIP
-                if field not in db_class.fields:
-                    continue
+            if "geoip" in third_parties:
+                if geoip is None:
+                    geoip = get_geoip()
 
-                informations = db_class.get(ip)
-                if not isinstance(informations, dict):
-                    continue
+                for db_class in geoip.values():
+                    db_class: GeoIP
+                    if field not in db_class.fields:
+                        continue
 
-                basic_information.update(informations)
+                    informations = db_class.get(ip)
+                    if not isinstance(informations, dict):
+                        continue
+
+                    basic_information.update(informations)
 
         return basic_information
 
@@ -238,9 +247,47 @@ class BotBlocker(BaseProperties):
 
 
     def captcha(self) -> str:
+        """
+        Renders and returns the HTML for a CAPTCHA challenge.
+
+        Returns:
+            str: The rendered CAPTCHA HTML as a string.
+        """
+
         return self.template_cache.render("oneclick_captcha.html", **self.get_default_replaces())
 
+
+    def get_suspicious_response(self, settings: Optional[dict] = None) -> str:
+        """
+        Determines the appropriate response for a suspicious request based on the provided settings.
+
+        Args:
+            settings (Optional[dict]): A dictionary containing configuration settings for handling
+            suspicious responses. If None, the instance's default settings are used.
+
+        Returns:
+            str: A response indicating either access denial or a CAPTCHA challenge.
+        """
+
+        if settings is None:
+            settings = self.settings
+
+        if settings["action"] == "block_if_suspicious":
+            return self.access_denied()
+
+        return self.captcha()
+
+
     def check_client(self) -> Optional[str]:
+        """
+        Checks the client's request against various security
+        measures and determines the appropriate response.
+
+        Returns:
+            Optional[str]: A response indicating either access denial,
+                a CAPTCHA challenge, or None if the client is safe.
+        """
+
         settings = self.settings
 
         if settings["action"] == "allow":
@@ -252,24 +299,22 @@ class BotBlocker(BaseProperties):
         if settings["action"] == "fight":
             return self.captcha()
 
+        if is_user_agent_malicious(request, settings["enable_crawler_block"]):
+            print("crawler")
+            return self.get_suspicious_response()
+
         client_ip = self.client_ip
 
         if client_ip is None:
-            if settings["action"] == "block_if_suspicious":
-                return self.access_denied()
-
-            return self.captcha()
+            print("clientip none")
+            return self.get_suspicious_response()
 
         if is_ip_malicious(client_ip):
-            if settings["action"] == "block_if_suspicious":
-                return self.access_denied()
-
-            return self.captcha()
+            print("clientip mal")
+            return self.get_suspicious_response()
 
         if is_ip_tor(client_ip):
-            if settings["action"] == "block_if_suspicious":
-                return self.access_denied()
-
-            return self.captcha()
+            print("clientip tor")
+            return self.get_suspicious_response()
 
         return

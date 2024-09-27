@@ -9,17 +9,29 @@ Author:   tn3w (mail@tn3w.dev)
 License:  Apache-2.0 license
 """
 
+import re
 from typing import Any, Optional, Final
 from urllib.parse import urlparse, urlunparse, urlencode, parse_qs, quote
 from flask import Request
 
 try:
+    from useragentutils import is_user_agent_crawler
     from iputils import is_valid_ip, is_ipv4, is_ipv6
 except ImportError:
     try:
+        from utils.useragentutils import is_user_agent_crawler
         from utils.iputils import is_valid_ip, is_ipv4, is_ipv6
     except ImportError:
+        from src.BotBlocker.utils.useragentutils import is_user_agent_crawler
         from src.BotBlocker.utils.iputils import is_valid_ip, is_ipv4, is_ipv6
+
+
+USER_AGENT_PATTERN: Final[str] = (
+    r"^Mozilla/\d+\.\d+"
+    r" \([^)]+\)"
+    r" .+?/[\d\.]+.*"
+)
+USER_AGENT_REGEX: Final[re.Pattern] = re.compile(USER_AGENT_PATTERN)
 
 
 def get_json_data(request: Request, default: Any = None) -> Any:
@@ -241,6 +253,37 @@ def get_ip_address(request: Request) -> Optional[str]:
             return ip
 
     return None
+
+
+def is_user_agent_malicious(request: Request, check_for_crawlers: bool = False) -> bool:
+    """
+    Determine if the user agent from the given request is malicious.
+
+    Args:
+        request (Request): The HTTP request object containing user agent information.
+        check_for_crawlers (bool): If set to True, the function will also check if the 
+                                    user agent is a known web crawler. Defaults to False.
+
+    Returns:
+        bool: True if the user agent is considered malicious, False otherwise.
+    """
+
+    user_agent = request.user_agent.string
+
+    if not isinstance(user_agent, str):
+        return True
+
+    if user_agent.strip() == "":
+        return True
+
+    if bool(USER_AGENT_REGEX.match(user_agent)) is False:
+        return True
+
+    if check_for_crawlers:
+        if is_user_agent_crawler(user_agent):
+            return True
+
+    return False
 
 
 if __name__ == "__main__":
