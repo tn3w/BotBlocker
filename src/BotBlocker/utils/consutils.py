@@ -63,6 +63,7 @@ if not os.path.exists(DATA_DIRECTORY_PATH):
     os.makedirs(DATA_DIRECTORY_PATH, exist_ok = True)
 
 DATASETS_DIRECTORY_PATH: Final[str] = os.path.join(DATA_DIRECTORY_PATH, "datasets")
+REQUESTS_FILE_PATH: Final[str] = os.path.join(DATA_DIRECTORY_PATH, "requests.pkl")
 
 
 GEOLITE_DATABASES: Final[Dict[str, dict]] = {

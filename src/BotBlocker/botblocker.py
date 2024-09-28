@@ -17,22 +17,22 @@ from flask import Flask, request, g
 try:
     from templatecache import TemplateCache
     from baseproperties import BaseProperties
-    from utils.beamutils import get_beam_id
     from utils.geoiputils import GeoIP, get_geoip
     from utils.utils import get_fields, matches_rule
     from utils.consutils import DATASETS_DIRECTORY_PATH
     from utils.iputils import is_ip_malicious, is_ip_tor
     from utils.requestutils import (
-        get_url, get_domain, get_subdomain, get_json_data, is_user_agent_malicious
+        get_url, get_domain, get_subdomain, get_json_data, is_user_agent_malicious,
+        get_http_version
     )
 except ImportError:
-    from src.BotBlocker.utils.beamutils import get_beam_id
     from src.BotBlocker.utils.geoiputils import GeoIP, get_geoip
     from src.BotBlocker.utils.utils import get_fields, matches_rule
     from src.BotBlocker.utils.consutils import DATASETS_DIRECTORY_PATH
     from src.BotBlocker.utils.iputils import is_ip_malicious, is_ip_tor
     from src.BotBlocker.utils.requestutils import (
-        get_url, get_domain, get_subdomain, get_json_data, is_user_agent_malicious
+        get_url, get_domain, get_subdomain, get_json_data, is_user_agent_malicious,
+        get_http_version
     )
     from src.BotBlocker.templatecache import TemplateCache
     from src.BotBlocker.baseproperties import BaseProperties
@@ -223,15 +223,14 @@ class BotBlocker(BaseProperties):
             dict: A dictionary containing the default replacements.
         """
 
-        client_ip = self.client_ip if self.client_ip is not None else ""
-        beam_id = get_beam_id([client_ip, request.user_agent.string])
+        client_ip = self.client_ip
 
         return {
             "domain": request.host,
             "path": request.path,
-            "beam_id": beam_id,
+            "beam_id": self.beam_id,
             "client_country": "US",
-            "client_ip": " — IP: " + client_ip,
+            "client_ip": " — IP: " + "" if client_ip is None else client_ip,
             "client_user_agent": request.user_agent.string,
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S") + " UTC",
         }
@@ -262,6 +261,22 @@ class BotBlocker(BaseProperties):
         return self.template_cache.render("oneclick_captcha.html", **self.get_default_replaces())
 
 
+    def end_log(self, action_taken: str) -> None:
+        """
+        Logs the end of a request with relevant information.
+
+        Args:
+        action_taken (str): A description of the action that was taken by the user, 
+            which will be logged for tracking and auditing purposes.
+        """
+
+        self.request_logger.log(
+            end_of_information = True, ip_address = self.client_ip,
+            user_agent = request.user_agent.string, http_version = get_http_version(request),
+            action_taken = action_taken
+        )
+
+
     def get_suspicious_response(self, settings: Optional[dict] = None) -> str:
         """
         Determines the appropriate response for a suspicious request based on the provided settings.
@@ -278,8 +293,10 @@ class BotBlocker(BaseProperties):
             settings = self.settings
 
         if settings["action"] == "block_if_suspicious":
+            self.end_log("block")
             return self.access_denied()
 
+        self.end_log("captcha")
         return self.captcha()
 
 
@@ -294,28 +311,35 @@ class BotBlocker(BaseProperties):
         """
 
         settings = self.settings
+        third_parties = settings["third_parties"]
 
+        logger = self.request_logger
         if settings["action"] == "allow":
+            self.end_log("allow")
             return
 
         if settings["action"] == "block":
+            self.end_log("block")
             return self.access_denied()
 
         if settings["action"] == "fight":
+            self.end_log("captcha")
             return self.captcha()
 
-        if is_user_agent_malicious(request, settings["enable_crawler_block"]):
+        if is_user_agent_malicious(request, settings["enable_crawler_block"], logger):
             return self.get_suspicious_response()
 
         client_ip = self.client_ip
 
         if client_ip is None:
+            logger.log(ip_address = client_ip, malicious = True, service = "ipnone")
             return self.get_suspicious_response()
 
-        if is_ip_malicious(client_ip):
+        if is_ip_malicious(client_ip, third_parties, logger):
             return self.get_suspicious_response()
 
-        if is_ip_tor(client_ip):
+        if is_ip_tor(client_ip, third_parties, logger):
             return self.get_suspicious_response()
 
+        self.end_log("allow")
         return

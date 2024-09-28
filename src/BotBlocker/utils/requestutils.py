@@ -17,11 +17,14 @@ from flask import Request
 try:
     from useragentutils import is_user_agent_crawler
     from iputils import is_valid_ip, is_ipv4, is_ipv6
+    from utils import is_float, Logger
 except ImportError:
     try:
+        from utils.utils import is_float, Logger
         from utils.useragentutils import is_user_agent_crawler
         from utils.iputils import is_valid_ip, is_ipv4, is_ipv6
     except ImportError:
+        from src.BotBlocker.utils.utils import is_float, Logger
         from src.BotBlocker.utils.useragentutils import is_user_agent_crawler
         from src.BotBlocker.utils.iputils import is_valid_ip, is_ipv4, is_ipv6
 
@@ -202,6 +205,36 @@ def is_get_or_post(request: Request) -> bool:
     return request.method.lower() in ("get", "post")
 
 
+def get_http_version(request: Request) -> Optional[float]:
+    """
+    Extracts the HTTP version from the given request object.
+
+    Args:
+        request (Request): The request object containing the environment 
+                           information.
+
+    Returns:
+        Optional[float]: The HTTP version as a float (e.g., 1.1, 2.0), 
+                         or None if the version cannot be determined.
+    """
+
+    server_protocol = request.environ.get('SERVER_PROTOCOL')
+
+    if not server_protocol:
+        return None
+
+    match = re.search(r"HTTP/(\d\.\d|\d)", server_protocol)
+
+    if not match:
+        return None
+
+    first_match_group = match.group(1)
+    if not is_float(first_match_group):
+        return None
+
+    return float(first_match_group)
+
+
 IP_SOURCS: Final[list[tuple]] = [
     "X-Real-Ip", "CF-Connecting-IP",
     "X-Forwarded-For", "X-Real-IP",
@@ -255,7 +288,8 @@ def get_ip_address(request: Request) -> Optional[str]:
     return None
 
 
-def is_user_agent_malicious(request: Request, check_for_crawlers: bool = False) -> bool:
+def is_user_agent_malicious(request: Request, check_for_crawlers: bool = False,
+                            logger: Optional[Logger] = None) -> bool:
     """
     Determine if the user agent from the given request is malicious.
 
@@ -270,17 +304,23 @@ def is_user_agent_malicious(request: Request, check_for_crawlers: bool = False) 
 
     user_agent = request.user_agent.string
 
-    if not isinstance(user_agent, str):
-        return True
+    if not isinstance(user_agent, str) or user_agent.strip() == "":
+        if logger is not None:
+            logger.log(user_agent = user_agent, malicious = True, service = "uanone")
 
-    if user_agent.strip() == "":
         return True
 
     if bool(USER_AGENT_REGEX.match(user_agent)) is False:
+        if logger is not None:
+            logger.log(user_agent = user_agent, malicious = True, service = "uainvalid")
+
         return True
 
     if check_for_crawlers:
         if is_user_agent_crawler(user_agent):
+            if logger is not None:
+                logger.log(user_agent = user_agent, malicious = True, service = "uacrawler")
+
             return True
 
     return False

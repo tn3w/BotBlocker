@@ -310,7 +310,7 @@ class CachedFile:
 
         file_directory = os.path.dirname(file_path)
 
-        if can_write(file_directory, len(data)):
+        if not can_write(file_directory, len(data)):
             return False
 
         if file_path not in file_locks:

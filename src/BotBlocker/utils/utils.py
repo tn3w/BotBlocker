@@ -7,10 +7,59 @@ Author:   tn3w (mail@tn3w.dev)
 License:  Apache-2.0 license
 """
 
+import re
 import time
+import secrets
 import functools
-from typing import Tuple, Any
 from traceback import format_exc
+from typing import Tuple, Final, Any
+
+
+CHARACTER_CATEGORIES: Final[dict] = {
+    "a-z": "abcdefghijklmnopqrstuvwxyz",
+    "A-Z": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    "0-9": "0123456789",
+    "%": "!\'#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
+}
+
+
+def generate_secure_random_string(length: int, characters: str = "a-zA-Z0-9%"):
+    """
+    Generate a random string of a specified length using a set of characters.
+
+    Parameters:
+        length (int): The length of the string to be generated.
+        characters (str): A string specifying the character sets to include in the generated string. 
+
+    Returns:
+        str: A randomly generated string of the specified length
+            composed of the selected characters.
+    """
+
+    full_characters = ""
+    for category, mapping in CHARACTER_CATEGORIES.items():
+        if category in characters:
+            full_characters += mapping
+
+    return "".join(secrets.choice(characters) for _ in range(length))
+
+
+def is_float(value: str) -> bool:
+    """
+    Check if a given string represents a valid float.
+
+    Args:
+        value (str): The string to be checked.
+
+    Returns:
+        bool: True if the string represents a valid float, False otherwise.
+    """
+
+    if not isinstance(value, str):
+        return False
+
+    float_pattern = re.compile(r'^-?\d+(\.\d+)?$')
+    return bool(float_pattern.match(value))
 
 
 def handle_exception(exception: Tuple[Exception, str], *args) -> None:
@@ -274,6 +323,28 @@ def matches_rule(rule: tuple, fields: dict) -> bool:
         operator = operator.strip(' ').lower()
 
     return evaluate_operator(field_data, operator, value)
+
+
+class Logger:
+    """
+    A simple logging class that provides functionality to log messages 
+    with various parameters.
+    """
+
+
+    def log(self, **kwargs) -> None:
+        """
+        Logs a message with the provided keyword arguments.
+
+        Args:
+            **kwargs: Arbitrary keyword arguments that represent the 
+                      details of the log entry. This can include 
+                      information such as log level, message, 
+                      timestamp, and any other relevant data.
+
+        Returns:
+            None: This method does not return any value.
+        """
 
 
 if __name__ == "__main__":

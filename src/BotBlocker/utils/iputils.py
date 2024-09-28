@@ -20,14 +20,14 @@ from typing import Final, Optional
 from datetime import datetime, timedelta
 
 try:
-    from src.BotBlocker.utils.utils import cache_with_ttl, handle_exception
+    from src.BotBlocker.utils.utils import cache_with_ttl, handle_exception, Logger
     from src.BotBlocker.utils.geoiputils import GeoIP, get_geoip
 except ImportError:
     try:
-        from utils.utils import cache_with_ttl, handle_exception
+        from utils.utils import cache_with_ttl, handle_exception, Logger
         from utils.geoiputils import GeoIP, get_geoip
     except ImportError:
-        from utils import cache_with_ttl, handle_exception
+        from utils import cache_with_ttl, handle_exception, Logger
         from utils.geoiputils import GeoIP, get_geoip
 
 
@@ -519,12 +519,16 @@ def is_ip_malicious_geoip(ip_address: str) -> bool:
     return False
 
 
-def is_ip_malicious(ip_address: str, third_parties: Optional[list] = None) -> bool:
+def is_ip_malicious(ip_address: str, third_parties: Optional[list] = None,
+                    logger: Optional[Logger] = None) -> bool:
     """
     Checks whether the given IP address is malicious.
 
     Args:
         ip_address (str): The IP address to check.
+        third_parties (Optional[list]): A list of third-party services to use for the check.
+        logger (Optional[Logger]): A logger instance for logging
+            information or errors during the check.
 
     Returns:
         bool: True if the IP address is malicious, False otherwise.
@@ -558,12 +562,16 @@ def is_ip_malicious(ip_address: str, third_parties: Optional[list] = None) -> bo
 
         is_malicious = third_party_function(ip_address, api_key)
         if is_malicious is True:
-            handle_exception(ip_address, "is malicious based on", third_party)
+            if logger is not None:
+                logger.log(ip_address = ip_address, malicious = True, service = third_party)
+
             return is_malicious
 
     if "geoip" in third_parties:
         if is_ip_malicious_geoip(ip_address):
-            handle_exception(ip_address, "is malicious based on geoip")
+            if logger is not None:
+                logger.log(ip_address = ip_address, malicious = True, service = "geoip")
+
             return True
 
     return False
@@ -636,13 +644,16 @@ def is_ip_tor_exonerator(ip_address: Optional[str] = None) -> bool:
     return False
 
 
-def is_ip_tor(ip_address: str, third_parties: Optional[list] = None) -> bool:
+def is_ip_tor(ip_address: str, third_parties: Optional[list] = None,
+              logger: Optional[Logger] = None) -> bool:
     """
     Checks whether the given IP address is Tor.
 
     Args:
         ip_address (str): The IP address to check.
         third_parties (Optional[list]): A list of third-party services to use for the check.
+        logger (Optional[Logger]): A logger instance for logging
+            information or errors during the check.
 
     Returns:
         bool: True if the IP address is Tor, False otherwise.
@@ -656,12 +667,16 @@ def is_ip_tor(ip_address: str, third_parties: Optional[list] = None) -> bool:
 
     if "tor_hostname" in third_parties and is_ipv4(ip_address):
         if is_ipv4_tor(ip_address):
-            handle_exception(ip_address, "is tor based on hostname lookup")
+            if logger is not None:
+                logger.log(ip_address = ip_address, tor = True, service = "hostname")
+
             return True
 
     if "tor_exonerator" in third_parties:
         if is_ip_tor_exonerator(ip_address):
-            handle_exception(ip_address, "is tor based on tor exonerator")
+            if logger is not None:
+                logger.log(ip_address = ip_address, tor = True, service = "exonerator")
+
             return True
 
     return False
