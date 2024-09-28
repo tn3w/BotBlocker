@@ -8,11 +8,16 @@ License:  Apache-2.0 license
 """
 
 import re
+import json
 import time
+import socket
 import secrets
 import functools
+import http.client
+import urllib.error
+import urllib.request
 from traceback import format_exc
-from typing import Tuple, Final, Any
+from typing import Tuple, Final, Optional, Any
 
 
 CHARACTER_CATEGORIES: Final[dict] = {
@@ -323,6 +328,58 @@ def matches_rule(rule: tuple, fields: dict) -> bool:
         operator = operator.strip(' ').lower()
 
     return evaluate_operator(field_data, operator, value)
+
+
+def http_request(url: str, method: str = "GET", timeout: int = 2,
+                 is_json: bool = False, default: Optional[Any] = None) -> Optional[Any]:
+    """
+    Sends an HTTP request to the specified URL and returns the response content.
+
+    Args:
+        url (str): The URL to which the request is sent.
+        method (str, optional): The HTTP method to use for the request. 
+                                Defaults to "GET".
+        timeout (int, optional): The maximum time (in seconds) to wait 
+                                 for a response. Defaults to 2 seconds.
+        is_json (bool, optional): If True, the response content is parsed 
+                                  as JSON and returned as a Python object. 
+                                  If False, the raw response content is 
+                                  returned as bytes. Defaults to False.
+        default (Optional[Any], optional): The value to return if an 
+                                            exception occurs during the 
+                                            request. Defaults to None.
+
+    Returns:
+        Optional[Any]: The response content, either as a parsed JSON 
+                        object or as bytes. Returns None if an exception 
+                        occurs during the request.
+    """
+
+    try:
+        req = urllib.request.Request(
+            url, headers = {"User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                " (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.3"
+            }, method = method
+        )
+
+        with urllib.request.urlopen(req, timeout = timeout) as response:
+            if response.getcode() != 200:
+                return default
+
+            content = response.read().decode("utf-8")
+
+        if is_json:
+            return json.loads(content)
+
+        return content
+    except (urllib.error.HTTPError, urllib.error.URLError, socket.timeout, TimeoutError,
+            json.JSONDecodeError, http.client.RemoteDisconnected, UnicodeEncodeError,
+            http.client.IncompleteRead, http.client.HTTPException, ConnectionResetError,
+            ConnectionAbortedError, ConnectionRefusedError, ConnectionError) as exc:
+        handle_exception(exc)
+
+    return default
 
 
 class Logger:

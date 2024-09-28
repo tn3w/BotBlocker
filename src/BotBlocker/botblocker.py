@@ -38,7 +38,7 @@ except ImportError:
     from src.BotBlocker.baseproperties import BaseProperties
 
 
-DEFAULT_THIRD_PARTIES = ["ipapi", "ipintel", "hostnameresolve", "exonerator", "geoip"]
+DEFAULT_THIRD_PARTIES = ["ipapi", "ipintel", "tor_hostname", "tor_exonerator", "geoip"]
 DEFAULT_SETTINGS: Final[Dict[str, Union[str, int, bool]]] = {
     # Action and Configuration
     "action": "auto", "captcha_type": "oneclick", "hardness": 1, "verification_age": 3600,

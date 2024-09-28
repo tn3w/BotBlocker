@@ -10,7 +10,6 @@ License:  Apache-2.0 license
 """
 
 import re
-import json
 import random
 import socket
 import urllib.error
@@ -20,14 +19,14 @@ from typing import Final, Optional
 from datetime import datetime, timedelta
 
 try:
-    from src.BotBlocker.utils.utils import cache_with_ttl, handle_exception, Logger
+    from src.BotBlocker.utils.utils import Logger, http_request, cache_with_ttl, handle_exception
     from src.BotBlocker.utils.geoiputils import GeoIP, get_geoip
 except ImportError:
     try:
-        from utils.utils import cache_with_ttl, handle_exception, Logger
+        from utils.utils import Logger, http_request, cache_with_ttl, handle_exception
         from utils.geoiputils import GeoIP, get_geoip
     except ImportError:
-        from utils import cache_with_ttl, handle_exception, Logger
+        from utils import Logger, http_request, cache_with_ttl, handle_exception
         from utils.geoiputils import GeoIP, get_geoip
 
 
@@ -67,29 +66,24 @@ UNWANTED_IPV6_RANGES: Final[list] = [
     ('ff00::', 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff')
 ]
 IPV4_PATTERN: Final[str] = r'^(\d{1,3}\.){3}\d{1,3}$'
-IPV6_PATTERN: Final[str] = (
-    r'^('
-    r'([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|:'
-    r'|::([0-9a-fA-F]{1,4}:){0,6}[0-9a-fA-F]{1,4}'
-    r'|[0-9a-fA-F]{1,4}::([0-9a-fA-F]{1,4}:){0,5}[0-9a-fA-F]{1,4}'
-    r'|([0-9a-fA-F]{1,4}:){1,2}:([0-9a-fA-F]{1,4}:){0,4}[0-9a-fA-F]{1,4}'
-    r'|([0-9a-fA-F]{1,4}:){1,3}:([0-9a-fA-F]{1,4}:){0,3}[0-9a-fA-F]{1,4}'
-    r'|([0-9a-fA-F]{1,4}:){1,4}:([0-9a-fA-F]{1,4}:){0,2}[0-9a-fA-F]{1,4}'
-    r'|([0-9a-fA-F]{1,4}:){1,5}:([0-9a-fA-F]{1,4}:){0,1}[0-9a-fA-F]{1,4}'
-    r'|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}'
-    r'|([0-9a-fA-F]{1,4}:){1,7}|:((:[0-9a-fA-F]{1,4}){1,7}|:)'
-    r'|([0-9a-fA-F]{1,4}:)(:[0-9a-fA-F]{1,4}){1,7}'
-    r'|([0-9a-fA-F]{1,4}:){2}(:[0-9a-fA-F]{1,4}){1,6}'
-    r'|([0-9a-fA-F]{1,4}:){3}(:[0-9a-fA-F]{1,4}){1,5}'
-    r'|([0-9a-fA-F]{1,4}:){4}(:[0-9a-fA-F]{1,4}){1,4}'
-    r'|([0-9a-fA-F]{1,4}:){5}(:[0-9a-fA-F]{1,4}){1,3}'
-    r'|([0-9a-fA-F]{1,4}:){6}(:[0-9a-fA-F]{1,4}){1,2}'
-    r'|([0-9a-fA-F]{1,4}:){7}(:[0-9a-fA-F]{1,4}):)$'
-)
+IPV6_PATTERN: Final[str] = r"""
+    ^(
+        ([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4} |
+        ([0-9a-fA-F]{1,4}:){1,7}: |
+        :(:[0-9a-fA-F]{1,4}){1,7} |
+        ([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4} |
+        ([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2} |
+        ([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3} |
+        ([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4} |
+        ([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5} |
+        [0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6}) |
+        :((:[0-9a-fA-F]{1,4}){1,7}|:) |
+        ([0-9a-fA-F]{1,4}:){1,7}:
+    )$
+"""
 
-
-COMPILED_IPV4_REGEX: Final[re.Pattern] = re.compile(IPV4_PATTERN)
-COMPILED_IPV6_REGEX: Final[re.Pattern] = re.compile(IPV6_PATTERN)
+COMPILED_IPV4_REGEX: Final[re.Pattern] = re.compile(IPV4_PATTERN, re.VERBOSE | re.IGNORECASE)
+COMPILED_IPV6_REGEX: Final[re.Pattern] = re.compile(IPV6_PATTERN, re.VERBOSE | re.IGNORECASE)
 
 
 def is_ipv4(ip_address: str) -> bool:
@@ -351,46 +345,35 @@ def is_ip_malicious_ipinfo(ip_address: str, api_key: Optional[str] = None) -> Op
         return None
 
     url = f"https://ipinfo.io/{ip_address}?token=" + api_key
-    try:
-        with urllib.request.urlopen(url, timeout = 2) as response:
-            if response.getcode() != 200:
-                return None
+    data = http_request(url, is_json = True, default = {})
 
-            data = response.read().decode("utf-8")
-            data = json.loads(data)
+    some_data_provided = False
+    for key in ["org", "asn", "privacy"]:
+        value = data.get(key, None)
+        if value is None:
+            continue
 
-            some_data_provided = False
+        some_data_provided = True
 
-            for key in ["org", "asn", "privacy"]:
-                value = data.get(key, None)
-                if value is None:
-                    continue
+        if key == "org":
+            if is_asn_malicious(key):
+                return True
 
-                some_data_provided = True
+            continue
 
-                if key == "org":
-                    if is_asn_malicious(key):
-                        return True
+        if key == "asn":
+            if is_asn_malicious(value.get("name", "")):
+                return True
 
-                    continue
+            continue
 
-                if key == "asn":
-                    if is_asn_malicious(value.get("name", "")):
-                        return True
+        if key == "privacy":
+            for privacy_key in ["vpn", "proxy", "tor", "relay", "hosting"]:
+                privacy_value = value.get(privacy_key, None)
+                if privacy_value is True:
+                    return True
 
-                    continue
-
-                if key == "privacy":
-                    for privacy_key in ["vpn", "proxy", "tor", "relay", "hosting"]:
-                        privacy_value = value.get(privacy_key, None)
-                        if privacy_value is True:
-                            return True
-
-            if not some_data_provided:
-                return None
-
-    except (urllib.error.HTTPError, urllib.error.URLError,
-            TimeoutError, json.JSONDecodeError):
+    if not some_data_provided:
         return None
 
     return False
@@ -418,28 +401,18 @@ def is_ip_malicious_ipapi(ip_address: str, api_key: Optional[str] = None) -> Opt
         url += "&api_key=" + api_key
         url = url.replace("http", "https")
 
-    try:
-        with urllib.request.urlopen(url, timeout = 2) as response:
-            if response.getcode() != 200:
-                return None
+    data = http_request(url, is_json = True, default = {})
 
-            data = response.read().decode("utf-8")
-            data = json.loads(data)
+    some_data_provided = False
+    for key in ["proxy", "hosting"]:
+        value = data.get(key, None)
+        if value is True:
+            return True
 
-            some_data_provided = False
-            for key in ["proxy", "hosting"]:
-                value = data.get(key, None)
-                if value is True:
-                    return True
+        if value is not None:
+            some_data_provided = True
 
-                if value is not None:
-                    some_data_provided = True
-
-            if not some_data_provided:
-                return None
-
-    except (urllib.error.HTTPError, urllib.error.URLError,
-            TimeoutError, json.JSONDecodeError):
+    if not some_data_provided:
         return None
 
     return False
@@ -460,24 +433,17 @@ def is_ip_malicious_ipintel(ip_address: str, _: Optional[str] = None) -> Optiona
     random_email = ''.join(
         random.choice("abcdefghijklmnopqrstuvwxyz"
                       "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-                      for _ in range(4)) + '@gmail.com'
+                      for _ in range(random.randint(4, 9))) + '@outlook.com'
 
     url = f"https://check.getipintel.net/check.php?ip={ip_address}&contact={random_email}"
 
-    try:
-        with urllib.request.urlopen(url, timeout = 2) as response:
-            if response.getcode() != 200:
-                return None
-
-            data = response.read().decode('utf-8')
-            if not data.isdigit():
-                return None
-
-            score = int(data)
-            if score > 0.90:
-                return True
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError):
+    data = http_request(url, default = "")
+    if not data.isdigit():
         return None
+
+    score = int(data)
+    if score > 0.90:
+        return True
 
     return False
 
@@ -565,7 +531,7 @@ def is_ip_malicious(ip_address: str, third_parties: Optional[list] = None,
             if logger is not None:
                 logger.log(ip_address = ip_address, malicious = True, service = third_party)
 
-            return is_malicious
+            return True
 
     if "geoip" in third_parties:
         if is_ip_malicious_geoip(ip_address):
@@ -597,8 +563,8 @@ def is_ipv4_tor(ipv4_address: Optional[str] = None) -> bool:
         if resolved_ip == '127.0.0.2':
             return True
 
-    except socket.gaierror:
-        pass
+    except socket.gaierror as exc:
+        handle_exception(exc)
 
     return False
 
@@ -615,7 +581,7 @@ def is_ip_tor_exonerator(ip_address: Optional[str] = None) -> bool:
         bool: True if the IPv6 address is Tor, False otherwise.
     """
 
-    today = (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')
+    today = (datetime.now() - timedelta(days = 2)).strftime('%Y-%m-%d')
 
     base_url = "https://metrics.torproject.org/exonerator.html"
     query_params = {
@@ -625,7 +591,12 @@ def is_ip_tor_exonerator(ip_address: Optional[str] = None) -> bool:
     }
     url = f"{base_url}?{urlencode(query_params)}"
 
-    req = urllib.request.Request(url, headers = {'Range': 'bytes=0-'})
+    req = urllib.request.Request(
+        url, headers = {'Range': 'bytes=0-', "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            " (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.3"
+        }
+    )
     try:
         with urllib.request.urlopen(req, timeout = 3) as response:
             html = ''
@@ -638,8 +609,8 @@ def is_ip_tor_exonerator(ip_address: Optional[str] = None) -> bool:
                 if "Result is positive" in html:
                     return True
 
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError):
-        return False
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
+        handle_exception(exc)
 
     return False
 

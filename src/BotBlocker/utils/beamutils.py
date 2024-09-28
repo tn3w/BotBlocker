@@ -101,6 +101,9 @@ class RequestLogger(Logger):
         if self.beam_id not in loaded_file_content:
             loaded_file_content[self.beam_id] = []
 
+        if data in loaded_file_content[self.beam_id]:
+            return
+
         loaded_file_content[self.beam_id].append(data)
         PICKLE.dump(REQUESTS_FILE_PATH, loaded_file_content, True)
 
