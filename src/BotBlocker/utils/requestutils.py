@@ -10,9 +10,9 @@ License:  Apache-2.0 license
 """
 
 import re
-from typing import Any, Optional, Final
+from typing import Optional, Final, Tuple, Any
 from urllib.parse import urlparse, urlunparse, urlencode, parse_qs, quote
-from flask import Request
+from flask import Request, g
 
 try:
     from useragentutils import is_user_agent_crawler
@@ -67,12 +67,12 @@ def get_url(request: Request) -> str:
     :return: The full URL as a string.
     """
 
-    scheme = request.headers.get('X-Forwarded-Proto', '')
-    if scheme not in ['https', 'http']:
+    scheme = request.headers.get("X-Forwarded-Proto", "")
+    if scheme not in ["https", "http"]:
         if request.is_secure:
-            scheme = 'https'
+            scheme = "https"
         else:
-            scheme = 'http'
+            scheme = "http"
 
     parsed_url = urlparse(str(request.url))
 
@@ -98,21 +98,21 @@ def get_domain(url: str) -> str:
         str: The extracted domain name from the request URL.
     """
 
-    if not url.startswith(('http://', 'https://')):
-        url = 'http://' + url
+    if not url.startswith(("http://", "https://")):
+        url = "http://" + url
 
     parsed_url = urlparse(url)
     netloc = parsed_url.netloc
 
-    if ':' in netloc:
-        netloc = netloc.split(':')[0]
+    if ":" in netloc:
+        netloc = netloc.split(":")[0]
 
-    domain_parts = netloc.split('.')
-    if all(part.isdigit() for part in netloc.split('.')):
+    domain_parts = netloc.split(".")
+    if all(part.isdigit() for part in netloc.split(".")):
         return netloc
 
     if len(domain_parts) > 2:
-        domain = '.'.join(domain_parts[-2:])
+        domain = ".".join(domain_parts[-2:])
     else:
         domain = netloc
 
@@ -136,16 +136,109 @@ def get_subdomain(url: str) -> Optional[str]:
     if is_ipv4(parsed_url.hostname) or is_ipv6(parsed_url.hostname):
         return None
 
-    if ':' in netloc:
-        netloc = netloc.split(':')[0]
+    if ":" in netloc:
+        netloc = netloc.split(":")[0]
 
-    domain_parts = netloc.split('.')
+    domain_parts = netloc.split(".")
 
     if len(domain_parts) > 2:
-        subdomain = '.'.join(domain_parts[:-2])
+        subdomain = ".".join(domain_parts[:-2])
         return subdomain
 
     return None
+
+
+def update_url(original_url: str, new_host: Optional[str] = None,
+               param_to_add: Optional[dict] = None, params_to_remove: Optional[list] = None) -> str:
+    """
+    Updates the given URL by optionally changing the host,
+    adding query parameters, or removing specific query parameters.
+
+    Args:
+        original_url (str): The original URL to be updated.
+        new_host (Optional[str]): A new host to replace the current one in the URL.
+            If None, the original host is retained.
+        param_to_add (Optional[dict]): A dictionary of query parameters to add or update in the URL. 
+            Keys represent parameter names and values represent the values for those parameters.
+        params_to_remove (Optional[list]): A list of query parameters to
+            remove from the URL if they exist.
+
+    Returns:
+        str: The updated URL with any changes applied.
+    """
+
+    parsed_url = urlparse(original_url)
+    new_netloc = new_host if new_host else parsed_url.netloc
+
+    query_params = parse_qs(parsed_url.query)
+
+    for key in query_params:
+        query_params[key] = [v.strip("[]'\"") for v in query_params[key]]
+
+
+    if params_to_remove:
+        for param in params_to_remove:
+            query_params.pop(param, None)
+
+    if param_to_add:
+        for key, value in param_to_add.items():
+            query_params[key] = value
+
+    new_query = urlencode(query_params, doseq=True)
+
+    new_url = urlunparse((
+        parsed_url.scheme,
+        new_netloc,
+        parsed_url.path,
+        parsed_url.params,
+        new_query,
+        parsed_url.fragment
+    ))
+
+    return new_url
+
+
+def get_theme(request: Request, without_customization: bool = False,
+              default: str = "light") -> Tuple[Optional[str], bool]:
+    """
+    Retrieve the theme setting.
+
+    Args:
+        request (Request): The request object to be checked, which is expected
+                           to have a "method" attribute representing the HTTP
+                           method of the request.
+        without_customization (bool): Flag to allow theme customization.
+        default (str): The default theme if none is set.
+
+    Return:
+        Tuple[Optional[str], bool]: A tuple containing the theme and a
+            boolean indicating if the default theme is used.
+    """
+
+    theme = None
+    if not without_customization:
+        theme_from_args = request.args.get("theme")
+        theme_from_cookies = request.cookies.get("theme")
+        theme_from_form = request.form.get("theme")
+
+        theme = (
+            theme_from_args
+            if theme_from_args in ["light", "dark"]
+            else (
+                theme_from_cookies
+                if theme_from_cookies in ["light", "dark"]
+                else (
+                    theme_from_form
+                    if theme_from_form in ["light", "dark"]
+                    else None
+                )
+            )
+        )
+
+    if theme is None:
+        return default, True
+
+    return theme, False
 
 
 def is_post(request: Request) -> bool:
@@ -153,15 +246,15 @@ def is_post(request: Request) -> bool:
     Determine if the given request is a POST request.
 
     This function checks the HTTP method of the provided request object
-    and returns True if the method is 'POST', and False otherwise.
+    and returns True if the method is "POST", and False otherwise.
 
     Args:
         request (Request): The request object to be checked, which is expected
-                           to have a 'method' attribute representing the HTTP
+                           to have a "method" attribute representing the HTTP
                            method of the request.
 
     Returns:
-        bool: True if the request method is 'POST', False otherwise.
+        bool: True if the request method is "POST", False otherwise.
     """
 
     return request.method.lower() == "post"
@@ -172,15 +265,15 @@ def is_get(request: Request) -> bool:
     Determine if the given request is a GET request.
 
     This function checks the HTTP method of the provided request object
-    and returns True if the method is 'GET', and False otherwise.
+    and returns True if the method is "GET", and False otherwise.
 
     Args:
         request (Request): The request object to be checked, which is expected
-                           to have a 'method' attribute representing the HTTP
+                           to have a "method" attribute representing the HTTP
                            method of the request.
 
     Returns:
-        bool: True if the request method is 'GET', False otherwise.
+        bool: True if the request method is "GET", False otherwise.
     """
 
     return request.method.lower() == "get"
@@ -191,15 +284,15 @@ def is_get_or_post(request: Request) -> bool:
     Determine if the given request is either a GET or POST request.
 
     This function checks the HTTP method of the provided request object
-    and returns True if the method is 'GET' or 'POST', and False otherwise.
+    and returns True if the method is "GET" or "POST", and False otherwise.
 
     Args:
         request (Request): The request object to be checked, which is expected
-                           to have a 'method' attribute representing the HTTP
+                           to have a "method" attribute representing the HTTP
                            method of the request.
 
     Returns:
-        bool: True if the request method is 'GET' or 'POST', False otherwise.
+        bool: True if the request method is "GET" or "POST", False otherwise.
     """
 
     return request.method.lower() in ("get", "post")
@@ -218,7 +311,7 @@ def get_http_version(request: Request) -> Optional[float]:
                          or None if the version cannot be determined.
     """
 
-    server_protocol = request.environ.get('SERVER_PROTOCOL')
+    server_protocol = request.environ.get("SERVER_PROTOCOL")
 
     if not server_protocol:
         return None
@@ -278,7 +371,7 @@ def get_ip_address(request: Request) -> Optional[str]:
                         ip = request.environ.get(source)
 
                 if ip:
-                    ip = ip.split(",")[0] if ',' in ip else ip
+                    ip = ip.split(",")[0] if "," in ip else ip
                     ip_list.add(ip.strip())
 
     for ip in ip_list:

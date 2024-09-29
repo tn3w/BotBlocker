@@ -22,6 +22,92 @@ except ImportError as exc:
     from utils.consutils import TEMPLATES_DIRECTORY_PATH
 
 
+def evaluate_condition(replaces: dict, condition: str) -> bool:
+    """
+    Evaluates a logical condition expressed as a string and returns the result as a boolean.
+
+    Args:
+        replaces (dict): A dictionary mapping variable names (as strings) to their boolean values.
+        condition (str): A string representing the logical condition to evaluate.
+
+    Returns:
+        bool: The result of the evaluated condition. Returns False if the
+            condition is invalid or if any variables are missing.
+    """
+
+    def get_value(expr):
+        expr = expr.strip()
+
+        if expr in replaces:
+            return replaces[expr]
+        if expr == "True":
+            return True
+        if expr == "False":
+            return False
+
+        if expr.startswith('"') and expr.endswith('"'):
+            return expr[1:-1]
+
+        return None
+
+    def parse_expression(tokens):
+        def parse_or():
+            result = parse_and()
+            while tokens and tokens[0] == 'or':
+                tokens.pop(0)
+                right = parse_and()
+                result = result or right
+            return result
+
+        def parse_and():
+            result = parse_not()
+            while tokens and tokens[0] == 'and':
+                tokens.pop(0)
+                right = parse_not()
+                result = result and right
+            return result
+
+        def parse_not():
+            if tokens and tokens[0] == 'not':
+                tokens.pop(0)
+                return not bool(parse_atom())
+            return parse_atom()
+
+        def parse_atom():
+            if not tokens:
+                return False
+            if tokens[0] == '(':
+                tokens.pop(0)
+                result = parse_or()
+                if tokens and tokens[0] == ')':
+                    tokens.pop(0)
+                return result
+            value = get_value(tokens[0])
+            tokens.pop(0)
+            return bool(value) if value is not None else False
+
+        return parse_or()
+
+    tokens = []
+    current_token = ''
+    for char in condition:
+        if char in '()' or char.isspace():
+            if current_token:
+                tokens.append(current_token)
+                current_token = ''
+            if not char.isspace():
+                tokens.append(char)
+        elif char in ['=', '!'] and current_token:
+            tokens.append(current_token)
+            current_token = char
+        else:
+            current_token += char
+    if current_token:
+        tokens.append(current_token)
+
+    return parse_expression(tokens)
+
+
 class TemplateCache:
     """
     A class for caching and minimizing HTML templates.
@@ -87,51 +173,43 @@ class TemplateCache:
     def replace_vars(self, template: str, replaces: dict) -> str:
         """
         Replace variables in a template string based on provided replacements.
-        
+
         Args:
             template (str): The template string containing variables and 
                             conditional sections.
             replaces (dict): A dictionary mapping variable names to their 
                             replacement values.
-        
+
         Returns:
             str: The rendered template with variables replaced and 
                 unnecessary whitespace removed.
         """
 
-        def evaluate_condition(variable_name: str, content: str) -> str:
-            """
-            Evaluates a conditional block by checking if the variable exists 
-            and is truthy in the 'replaces' dictionary.
-            """
-
-            if replaces.get(variable_name):
-                return content.strip()
-
-            return ''
-
         def process_conditions(template: str) -> str:
-            """
-            Processes all conditionals in the template.
-            """
-
             stack = []
             result = []
             idx = 0
+
             while idx < len(template):
                 if template.startswith("{if ", idx):
                     end_if_idx = template.find('}', idx)
-                    var_name = template[idx + 4:end_if_idx].strip()
-                    stack.append((var_name, len(result)))
+                    condition = template[idx + 4:end_if_idx].strip()
+                    stack.append((condition, len(result)))
                     idx = end_if_idx + 1
+
                 elif template.startswith("{endif}", idx):
                     if not stack:
                         raise ValueError("Unmatched endif found.")
-                    var_name, start_idx = stack.pop()
+
+                    condition, start_idx = stack.pop()
                     conditional_content = ''.join(result[start_idx:])
                     result = result[:start_idx]
-                    result.append(evaluate_condition(var_name, conditional_content))
+
+                    if evaluate_condition(replaces, condition):
+                        result.append(conditional_content.strip())
+
                     idx += len("{endif}")
+
                 else:
                     result.append(template[idx])
                     idx += 1
@@ -146,11 +224,14 @@ class TemplateCache:
         sorted_replaces = dict(
             sorted(replaces.items(), key=lambda item: len(item[0]), reverse=True)
         )
-
         for key, value in sorted_replaces.items():
-            if isinstance(value, str):
-                key = key.upper()
-                rendered_template = rendered_template.replace("{" + key + "}", value)
+            if not isinstance(value, str):
+                try:
+                    value = str(value)
+                except ValueError:
+                    continue
+
+            rendered_template = rendered_template.replace("{" + key.upper() + "}", value)
 
         rendered_template = re.sub(r'\s+', ' ', rendered_template).strip()
         rendered_template = re.sub(r'\s*\{\s*', '{', rendered_template)

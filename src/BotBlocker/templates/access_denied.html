@@ -23,6 +23,12 @@
                 display: none;
             }
 
+            { if not without_customization or not without_watermark }
+            footer {
+                text-align: unset;
+            }
+            { endif }
+
             @media (max-width: 400px) {
                 main {
                     padding: 0 10px;
@@ -44,7 +50,7 @@
             <h2>You do not have access to {DOMAIN}.</h2>
             <p>The site owner may have set restrictions that limit your access. Please disable any proxies or VPNs you are using. If you believe this is an error, contact the server administrator.</p>
             <p class="i">Error code: 403 — URL: {DOMAIN}{PATH} — Beam ID: {BEAM_ID}{CLIENT_IP} — User agent: {CLIENT_USER_AGENT} — Timestamp: {TIMESTAMP}</p>
+            {FOOTER}
         </main>
-        {FOOTER}
     </body>
 </html>

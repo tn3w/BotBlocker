@@ -23,7 +23,7 @@ try:
     from utils.iputils import is_ip_malicious, is_ip_tor
     from utils.requestutils import (
         get_url, get_domain, get_subdomain, get_json_data, is_user_agent_malicious,
-        get_http_version
+        get_http_version, update_url
     )
 except ImportError:
     from src.BotBlocker.utils.geoiputils import GeoIP, get_geoip
@@ -32,7 +32,7 @@ except ImportError:
     from src.BotBlocker.utils.iputils import is_ip_malicious, is_ip_tor
     from src.BotBlocker.utils.requestutils import (
         get_url, get_domain, get_subdomain, get_json_data, is_user_agent_malicious,
-        get_http_version
+        get_http_version, update_url
     )
     from src.BotBlocker.templatecache import TemplateCache
     from src.BotBlocker.baseproperties import BaseProperties
@@ -67,7 +67,7 @@ DEFAULT_SETTINGS: Final[Dict[str, Union[str, int, bool]]] = {
     "without_cookies": False, "without_arg_transfer": False, "without_watermark": False,
 
     # Miscellaneous
-    "debug": False, "third_parties": DEFAULT_THIRD_PARTIES
+    "debug": False, "third_parties": DEFAULT_THIRD_PARTIES, "host": None
 }
 
 
@@ -90,6 +90,7 @@ class BotBlocker(BaseProperties):
 
     def __init__(self, app: Flask, default_settings: Optional[Dict[str, str]] = None,
                  rules: Optional[Dict[tuple, dict]] = None) -> None:
+        super().__init__()
         self.initialized = True
 
         self.app = app
@@ -165,7 +166,7 @@ class BotBlocker(BaseProperties):
         """
 
         url = get_url(request)
-        ip = self.client_ip
+        ip = self.ip_address
 
         splitted_url = urlparse(url)
         basic_information = {
@@ -187,13 +188,13 @@ class BotBlocker(BaseProperties):
 
             if field == "is_ip_malicious":
                 basic_information["is_ip_malicious"] = is_ip_malicious(
-                    self.client_ip, third_parties
+                    self.ip_address, third_parties
                 )
                 continue
 
             if field == "is_ip_tor":
                 basic_information["is_ip_tor"] = is_ip_tor(
-                    self.client_ip, third_parties
+                    self.ip_address, third_parties
                 )
                 continue
 
@@ -223,20 +224,35 @@ class BotBlocker(BaseProperties):
             dict: A dictionary containing the default replacements.
         """
 
-        client_ip = self.client_ip
+        client_ip = self.ip_address
+
+        url = get_url(request)
+
+        default_host = self.default_settings["host"]
+        host = request.host if default_host is None else default_host
+
+        theme, is_default_theme = self.theme
 
         return {
-            "domain": request.host,
+            "domain": host,
             "path": request.path,
             "beam_id": self.beam_id,
             "client_country": "US",
-            "client_ip": " — IP: " + ("" if client_ip is None else client_ip),
+            "client_ip": "" if client_ip is None else " — IP: " + client_ip,
             "client_user_agent": request.user_agent.string,
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S") + " UTC",
-            "with_footer": not self.default_settings["without_customization"]
-                or not self.default_settings["without_watermark"],
-            "with_customization": not self.default_settings["without_customization"],
-            "with_watermark": not self.default_settings["without_watermark"]
+            "without_customization": self.default_settings["without_customization"],
+            "without_watermark": self.default_settings["without_watermark"],
+
+            # Urls
+            "change_language_url": update_url(url, host, {"change_language": 1}),
+            "dark_theme_url": update_url(url, host, {"theme": "dark"}),
+            "light_theme_url": update_url(url, host, {"theme": "light"}),
+
+            # Theme
+            "is_light": theme == "light" and not is_default_theme,
+            "is_dark": theme == "dark" and not is_default_theme,
+            "is_default_theme": is_default_theme
         }
 
 
@@ -275,7 +291,7 @@ class BotBlocker(BaseProperties):
         """
 
         self.request_logger.log(
-            end_of_information = True, ip_address = self.client_ip,
+            end_of_information = True, ip_address = self.ip_address,
             user_agent = request.user_agent.string, http_version = get_http_version(request),
             action_taken = action_taken
         )
@@ -333,7 +349,7 @@ class BotBlocker(BaseProperties):
         if is_user_agent_malicious(request, settings["enable_crawler_block"], logger):
             return self.get_suspicious_response()
 
-        client_ip = self.client_ip
+        client_ip = self.ip_address
 
         if client_ip is None:
             logger.log(ip_address = client_ip, malicious = True, service = "ipnone")
