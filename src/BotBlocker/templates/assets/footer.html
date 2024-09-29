@@ -1,0 +1,16 @@
+{ if with_footer }
+<footer>
+    <nav>
+        <ul>
+            { if with_customization }
+            <li><a href="?change_language=1">Change Language</a></li>
+            <li class="dark-theme"><a href="?theme=dark">Use dark theme</a></li>
+            <li class="light-theme"><a href="?theme=light">Use light theme</a></li>
+            { endif }
+            { if with_watermark }
+            <li><span>Efficiency & protection powered by <a href="https://github.com/tn3w/flask_Captchaify" target="_blank" ntr="1">Captchaify</a></span></li>
+            { endif }
+        </ul>
+    </nav>
+</footer>
+{ endif }

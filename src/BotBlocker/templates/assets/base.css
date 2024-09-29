@@ -26,3 +26,34 @@ body {
     justify-content: center;
     overflow: hidden;
 }
+
+{ if with_footer }
+footer {
+    text-align: center;
+    margin-top: 30px;
+}
+
+footer nav ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+footer nav ul li {
+    color: var(--secondary-text-color);
+    display: inline;
+    margin-right: 20px;
+    font-size: 15px;
+    text-align: center;
+    font-weight: lighter;
+    word-break: keep-all;
+}
+
+footer nav ul li a {
+    color: var(--secondary-text-color);
+    text-decoration: none;
+}
+
+footer nav ul li a:hover {
+    text-decoration: underline;
+}
+{ endif }

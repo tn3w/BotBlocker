@@ -75,7 +75,88 @@ class TemplateCache:
                     continue
 
                 file_name, extension = os.path.splitext(asset_file_name)[:2]
-                self._assets[file_name] = minimize(asset_file_content, extension)
+                template = minimize(asset_file_content, extension)
+
+                rendered_template = re.sub(r'\s+', ' ', template).strip()
+                rendered_template = re.sub(r'\s*\{\s*', '{', rendered_template)
+                rendered_template = re.sub(r'\s*\}\s*', '}', rendered_template)
+
+                self._assets[file_name] = rendered_template
+
+
+    def replace_vars(self, template: str, replaces: dict) -> str:
+        """
+        Replace variables in a template string based on provided replacements.
+        
+        Args:
+            template (str): The template string containing variables and 
+                            conditional sections.
+            replaces (dict): A dictionary mapping variable names to their 
+                            replacement values.
+        
+        Returns:
+            str: The rendered template with variables replaced and 
+                unnecessary whitespace removed.
+        """
+
+        def evaluate_condition(variable_name: str, content: str) -> str:
+            """
+            Evaluates a conditional block by checking if the variable exists 
+            and is truthy in the 'replaces' dictionary.
+            """
+
+            if replaces.get(variable_name):
+                return content.strip()
+
+            return ''
+
+        def process_conditions(template: str) -> str:
+            """
+            Processes all conditionals in the template.
+            """
+
+            stack = []
+            result = []
+            idx = 0
+            while idx < len(template):
+                if template.startswith("{if ", idx):
+                    end_if_idx = template.find('}', idx)
+                    var_name = template[idx + 4:end_if_idx].strip()
+                    stack.append((var_name, len(result)))
+                    idx = end_if_idx + 1
+                elif template.startswith("{endif}", idx):
+                    if not stack:
+                        raise ValueError("Unmatched endif found.")
+                    var_name, start_idx = stack.pop()
+                    conditional_content = ''.join(result[start_idx:])
+                    result = result[:start_idx]
+                    result.append(evaluate_condition(var_name, conditional_content))
+                    idx += len("{endif}")
+                else:
+                    result.append(template[idx])
+                    idx += 1
+
+            if stack:
+                raise ValueError("Unmatched if found.")
+
+            return ''.join(result)
+
+        rendered_template = process_conditions(template)
+
+        sorted_replaces = dict(
+            sorted(replaces.items(), key=lambda item: len(item[0]), reverse=True)
+        )
+
+        for key, value in sorted_replaces.items():
+            if isinstance(value, str):
+                key = key.upper()
+                rendered_template = rendered_template.replace("{" + key + "}", value)
+
+        rendered_template = re.sub(r'\s+', ' ', rendered_template).strip()
+        rendered_template = re.sub(r'\s*\{\s*', '{', rendered_template)
+        rendered_template = re.sub(r'\s*\}\s*', '}', rendered_template)
+
+        return rendered_template
 
 
     def render(self, template_name: str, **kwargs) -> str:
@@ -94,24 +175,14 @@ class TemplateCache:
         if template is None:
             return ""
 
-        kwargs.update(self._assets)
+        assets = {}
+        for asset_name, asset in self._assets.items():
+            assets[asset_name] = self.replace_vars(asset, kwargs)
 
-        sorted_kwargs = dict(
-            sorted(
-                kwargs.items(),
-                key=lambda item: len(item[0]),
-                reverse=True
-            )
-        )
+        kwargs.update(assets)
 
-        for key, value in sorted_kwargs.items():
-            key = key.upper()
-            template = template.replace("{" + key + "}", value)
-
-        template = re.sub(r'\s+', ' ', template).strip()
-        template = re.sub(r'\s*\{\s*', '{', template)
-        template = re.sub(r'\s*\}\s*', '}', template)
-        return template
+        rendered_template = self.replace_vars(template, kwargs)
+        return rendered_template
 
 
 if __name__ == "__main__":

@@ -41,8 +41,7 @@
             }
 
             .i {
-                margin-top: 25px;
-                font-size: 0.35rem;
+                display: none;
             }
 
             @media only screen and (max-width: 670px) {
@@ -72,6 +71,7 @@
                 <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=6"><img src="{IMAGE6}" class="gi" alt="Image 6"></a>
             </div>
             <p class="i">Error code: 401 — URL: {DOMAIN}{PATH} — Beam ID: {BEAM_ID}{CLIENT_IP} — User agent: {CLIENT_USER_AGENT} — Timestamp: {TIMESTAMP}</p>
+            {FOOTER}
         </main>
     </body>
 </html>

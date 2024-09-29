@@ -63,7 +63,7 @@ DEFAULT_SETTINGS: Final[Dict[str, Union[str, int, bool]]] = {
     "enable_error_handling": False, "errors": None,
 
     # Customization and Options
-    "theme": "light", "language": "en", "without_customisation": False,
+    "theme": "light", "language": "en", "without_customization": False,
     "without_cookies": False, "without_arg_transfer": False, "without_watermark": False,
 
     # Miscellaneous
@@ -230,9 +230,13 @@ class BotBlocker(BaseProperties):
             "path": request.path,
             "beam_id": self.beam_id,
             "client_country": "US",
-            "client_ip": " — IP: " + "" if client_ip is None else client_ip,
+            "client_ip": " — IP: " + ("" if client_ip is None else client_ip),
             "client_user_agent": request.user_agent.string,
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S") + " UTC",
+            "with_footer": not self.default_settings["without_customization"]
+                or not self.default_settings["without_watermark"],
+            "with_customization": not self.default_settings["without_customization"],
+            "with_watermark": not self.default_settings["without_watermark"]
         }
 
 
