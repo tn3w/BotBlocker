@@ -11,15 +11,15 @@ from geoip2.errors import AddressNotFoundError, GeoIP2Error
 try:
     from src.BotBlocker.utils.fileutils import can_read, can_write
     from src.BotBlocker.utils.utils import cache_with_ttl
-    from src.BotBlocker.utils.consutils import DATA_DIRECTORY_PATH
+    from src.BotBlocker.utils.cons import DATA_DIRECTORY_PATH
 except ImportError:
     try:
         from utils.fileutils import can_read, can_write
         from utils.utils import cache_with_ttl
-        from utils.consutils import DATA_DIRECTORY_PATH
+        from utils.cons import DATA_DIRECTORY_PATH
     except ImportError:
         from utils import cache_with_ttl
-        from consutils import DATA_DIRECTORY_PATH
+        from cons import DATA_DIRECTORY_PATH
         from fileutils import can_read, can_write
 
 

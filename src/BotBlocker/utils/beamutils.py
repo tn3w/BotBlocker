@@ -5,18 +5,18 @@ from typing import Final
 try:
     from src.BotBlocker.utils.crypto.hashing import SHA256
     from src.BotBlocker.utils.fileutils import PICKLE
-    from src.BotBlocker.utils.consutils import REQUESTS_FILE_PATH
+    from src.BotBlocker.utils.cons import REQUESTS_FILE_PATH
     from src.BotBlocker.utils.utils import generate_secure_random_string, Logger
 except ImportError:
     try:
         from utils.fileutils import PICKLE
-        from utils.consutils import REQUESTS_FILE_PATH
+        from utils.cons import REQUESTS_FILE_PATH
         from utils.utils import generate_secure_random_string, Logger
         from utils.crypto.hashing import SHA256
     except ImportError:
         from utils import generate_secure_random_string, Logger
         from fileutils import PICKLE
-        from consutils import REQUESTS_FILE_PATH
+        from cons import REQUESTS_FILE_PATH
         from crypto.hashing import SHA256
 
 

@@ -9,9 +9,11 @@ Author:   tn3w (mail@tn3w.dev)
 License:  Apache-2.0 license
 """
 
+import os
+import urllib.request
 from urllib.parse import urlparse
 from datetime import datetime, timezone
-from typing import Final, Union, Tuple, Optional, Dict
+from typing import Final, Union, Tuple, Optional, Dict, List
 from flask import Flask, request, g
 
 try:
@@ -19,7 +21,7 @@ try:
     from baseproperties import BaseProperties
     from utils.geoiputils import GeoIP, get_geoip
     from utils.utils import get_fields, matches_rule
-    from utils.consutils import DATASETS_DIRECTORY_PATH
+    from utils.cons import DATASETS_DIRECTORY_PATH
     from utils.iputils import is_ip_malicious, is_ip_tor
     from utils.requestutils import (
         get_url, get_domain, get_subdomain, get_json_data, is_user_agent_malicious,
@@ -28,7 +30,7 @@ try:
 except ImportError:
     from src.BotBlocker.utils.geoiputils import GeoIP, get_geoip
     from src.BotBlocker.utils.utils import get_fields, matches_rule
-    from src.BotBlocker.utils.consutils import DATASETS_DIRECTORY_PATH
+    from src.BotBlocker.utils.cons import DATASETS_DIRECTORY_PATH
     from src.BotBlocker.utils.iputils import is_ip_malicious, is_ip_tor
     from src.BotBlocker.utils.requestutils import (
         get_url, get_domain, get_subdomain, get_json_data, is_user_agent_malicious,
@@ -45,7 +47,7 @@ DEFAULT_SETTINGS: Final[Dict[str, Union[str, int, bool]]] = {
     "store_anonymously": True, "as_route": False, "route_extension": "_captchaify",
 
     # Dataset Parameters
-    "dataset": "keys", "dataset_size": (20, 100), "dataset_dir": DATASETS_DIRECTORY_PATH,
+    "dataset": "ai_dogs", "dataset_size": (20, 100), "dataset_dir": DATASETS_DIRECTORY_PATH,
 
     # Rate Limiting
     "enable_rate_limit": False, "rate_limit": (15, 300),
@@ -70,6 +72,15 @@ DEFAULT_SETTINGS: Final[Dict[str, Union[str, int, bool]]] = {
     "debug": False, "third_parties": DEFAULT_THIRD_PARTIES, "host": None
 }
 
+DATASETS: Final[dict] = {
+    "keys": ("https://raw.githubusercontent.com/tn3w/"
+             "Captcha_Datasets/refs/heads/master/datasets/keys.pkl"),
+    "animals": ("https://raw.githubusercontent.com/tn3w/"
+                "Captcha_Datasets/refs/heads/master/datasets/animals.pkl"),
+    "ai_dogs": ("https://raw.githubusercontent.com/tn3w/"
+                "Captcha_Datasets/refs/heads/master/datasets/ai-dogs.pkl")
+}
+
 
 class BotBlocker(BaseProperties):
     """ 
@@ -79,6 +90,18 @@ class BotBlocker(BaseProperties):
 
     @staticmethod
     def _normalize_default_settings(default_settings: Optional[Dict[str, str]] = None):
+        """
+        Normalize the default settings by merging them with the provided settings.
+
+        Args:
+            default_settings (Optional[Dict[str, str]]): A dictionary of default settings 
+                to be merged with the predefined settings. If None or not a dictionary, 
+                the predefined settings are returned.
+
+        Returns:
+            Dict[str, str]: A dictionary containing the normalized settings.
+        """
+
         if not isinstance(default_settings, dict):
             return DEFAULT_SETTINGS
 
@@ -86,6 +109,37 @@ class BotBlocker(BaseProperties):
         new_default_settings.update(default_settings)
 
         return new_default_settings
+
+
+    @staticmethod
+    def download_datasets(datasets: List[str], dataset_dir: str) -> None:
+        """
+        Download specified datasets and save them to the given directory.
+
+        Args:
+            datasets (List[str]): A list of dataset names to be downloaded.
+            dataset_dir (str): The directory where the datasets will be saved.
+
+        Returns:
+            None: This method does not return a value. It performs file downloads 
+            and directory creation as side effects.
+        """
+
+        if not os.path.exists(dataset_dir):
+            os.makedirs(dataset_dir, exist_ok = True)
+
+        for dataset_name in datasets:
+            if dataset_name not in DATASETS:
+                continue
+
+            dataset_file_path = os.path.join(dataset_dir, dataset_name + ".pkl")
+            if os.path.exists(dataset_file_path):
+                continue
+
+            print('Downloading', dataset_name + "...")
+            urllib.request.urlretrieve(
+                DATASETS[dataset_name], dataset_file_path
+            )
 
 
     def __init__(self, app: Flask, default_settings: Optional[Dict[str, str]] = None,
@@ -115,6 +169,14 @@ class BotBlocker(BaseProperties):
             self.rules = {}
 
             self.initialized = True
+
+        required_datasets = [self.default_settings["dataset"]]
+        for changes in self.rules.values():
+            dataset = changes.get("dataset", None)
+            if dataset is not None:
+                required_datasets.append(dataset)
+
+        self.download_datasets(required_datasets, self.default_settings["dataset_dir"])
 
         app = self.app
         app.before_request(self.check_client)

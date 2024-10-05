@@ -15,11 +15,11 @@ import os
 try:
     from src.BotBlocker.utils.fileutils import read
     from src.BotBlocker.utils.htmlutils import minimize_html, minimize
-    from src.BotBlocker.utils.consutils import TEMPLATES_DIRECTORY_PATH
+    from src.BotBlocker.utils.cons import TEMPLATES_DIRECTORY_PATH
 except ImportError as exc:
     from utils.fileutils import read
     from utils.htmlutils import minimize_html, minimize
-    from utils.consutils import TEMPLATES_DIRECTORY_PATH
+    from utils.cons import TEMPLATES_DIRECTORY_PATH
 
 
 def evaluate_condition(replaces: dict, condition: str) -> bool:

@@ -11,7 +11,7 @@
                 padding: 0 20px;
             }
 
-            .oi {
+            .r {
                 width: 200px;
                 height: 200px;
                 display: block;
@@ -26,14 +26,14 @@
                 padding-top: 20px;
             }
 
-            .ig {
+            .g {
                 display: grid;
                 grid-template-columns: repeat(6, 1fr);
                 grid-gap: 10px;
                 margin-top: 20px;
             }
 
-            .gi {
+            .m {
                 width: 100px;
                 height: 100px;
                 border-radius: 5px;
@@ -45,13 +45,13 @@
             }
 
             @media only screen and (max-width: 670px) {
-                .ig {
+                .g {
                     grid-template-columns: repeat(3, 1fr);
                 }
             }
 
             @media only screen and (max-width: 400px) {
-                .ig {
+                .g {
                     grid-template-columns: repeat(2, 1fr);
                 }
             }
@@ -59,16 +59,16 @@
     </head>
     <body>
         <main>
-            <img src="{ORIGINAL_IMAGE}" alt="Original Image" class="oi">
+            <img src="{ORIGINAL_IMAGE}" alt="Original Image" class="r">
             <p class="c">{CAPTION}</p>
-            {ERROR}
-            <div class="ig">
-                <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=1"><img src="{IMAGE1}" class="gi" alt="Image 1"></a>
-                <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=2"><img src="{IMAGE2}" class="gi" alt="Image 2"></a>
-                <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=3"><img src="{IMAGE3}" class="gi" alt="Image 3"></a>
-                <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=4"><img src="{IMAGE4}" class="gi" alt="Image 4"></a>
-                <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=5"><img src="{IMAGE5}" class="gi" alt="Image 5"></a>
-                <a href="{OTHERARGS}{EXT}ct={CAPTCHA_TOKEN}&i=6"><img src="{IMAGE6}" class="gi" alt="Image 6"></a>
+            { if error }<p class="c" style="color:#ff0000;font-size:16px;">{ ERROR_MESSAGE }</p>{ endif }
+            <div class="g">
+                <a href="?ct={CAPTCHA_TOKEN}&i=1"><img src="{IMAGE1}" class="m" alt="Image 1"></a>
+                <a href="?ct={CAPTCHA_TOKEN}&i=2"><img src="{IMAGE2}" class="m" alt="Image 2"></a>
+                <a href="?ct={CAPTCHA_TOKEN}&i=3"><img src="{IMAGE3}" class="m" alt="Image 3"></a>
+                <a href="?ct={CAPTCHA_TOKEN}&i=4"><img src="{IMAGE4}" class="m" alt="Image 4"></a>
+                <a href="?ct={CAPTCHA_TOKEN}&i=5"><img src="{IMAGE5}" class="m" alt="Image 5"></a>
+                <a href="?ct={CAPTCHA_TOKEN}&i=6"><img src="{IMAGE6}" class="m" alt="Image 6"></a>
             </div>
             <p class="i">Error code: 401 — URL: {DOMAIN}{PATH} — Beam ID: {BEAM_ID}{CLIENT_IP} — User agent: {CLIENT_USER_AGENT} — Timestamp: {TIMESTAMP}</p>
             {FOOTER}
